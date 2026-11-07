@@ -417,6 +417,8 @@
   "openAiApiModeChatCompletions": "Chat Completions",
   "openAiApiModeResponses": "Responses",
   "openAiApiModeTip": "فقط برای مدل‌هایی که از پروتکل سازگار با OpenAI استفاده می‌کنند در دسترس است.",
+  "reasoningToolRoundOnly": "ارسال دوبارهٔ استدلال فقط هنگام ادامه پس از فراخوانی ابزار",
+  "reasoningToolRoundOnlyTip": "استدلال فقط زمانی دوباره ارسال می‌شود که مدل نتیجهٔ ابزار را دریافت کند و همان نوبت را ادامه دهد. سابقهٔ استدلال در تاریخچهٔ محلی گفتگو می‌ماند. این تنظیم برای Chat Completions اعمال می‌شود.",
   "modelSettingsApplyToSelected": "این تنظیمات برای همه مدل‌های انتخاب‌شده اعمال می‌شود و بعداً می‌توان هرکدام را جداگانه تغییر داد.",
   "platformBedrock": "AWS Bedrock",
   "bedrock": {

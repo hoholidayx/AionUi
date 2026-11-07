@@ -417,6 +417,8 @@
   "openAiApiModeChatCompletions": "Chat Completions",
   "openAiApiModeResponses": "Responses",
   "openAiApiModeTip": "OpenAI互換プロトコルを使用するモデルでのみ利用できます。",
+  "reasoningToolRoundOnly": "ツール実行後の続行時のみ推論を再送",
+  "reasoningToolRoundOnlyTip": "ツールの結果を受け取って同じターンを続ける場合にのみ推論を再送します。推論の記録はローカルの会話履歴に残ります。Chat Completions に適用されます。",
   "modelSettingsApplyToSelected": "これらの設定は選択したすべてのモデルに適用され、後から個別に変更できます。",
   "platformBedrock": "AWS Bedrock",
   "bedrock": {

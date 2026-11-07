@@ -417,6 +417,8 @@
   "openAiApiModeChatCompletions": "Chat Completions",
   "openAiApiModeResponses": "Responses",
   "openAiApiModeTip": "僅對使用 OpenAI 相容協議的模型顯示。",
+  "reasoningToolRoundOnly": "僅在工具續輪回傳推理",
+  "reasoningToolRoundOnlyTip": "僅在模型收到工具結果並繼續目前這一輪時回傳推理。推理記錄仍儲存在本機對話中。適用於 Chat Completions。",
   "modelSettingsApplyToSelected": "這些設定會套用至全部已選模型，新增後仍可分別修改。",
   "platformBedrock": "AWS Bedrock",
   "bedrock": {

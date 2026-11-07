@@ -516,6 +516,7 @@ export type ModelImageInputCapability = 'supported' | 'unsupported';
 export type ModelSettings = {
   image_input?: ModelImageInputCapability;
   openai_api_mode?: ModelOpenAiApiMode;
+  reasoning_tool_round_only?: boolean;
 };
 
 export interface IProvider {

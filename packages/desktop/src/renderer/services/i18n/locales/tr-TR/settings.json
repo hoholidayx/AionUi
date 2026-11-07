@@ -417,6 +417,8 @@
   "openAiApiModeChatCompletions": "Chat Completions",
   "openAiApiModeResponses": "Responses",
   "openAiApiModeTip": "Yalnızca OpenAI uyumlu protokol kullanan modellerde kullanılabilir.",
+  "reasoningToolRoundOnly": "Akıl yürütmeyi yalnızca araç çağrısından sonra yeniden gönder",
+  "reasoningToolRoundOnlyTip": "Akıl yürütme yalnızca model araç sonucunu alıp aynı turu sürdürdüğünde yeniden gönderilir. Kayıt yerel sohbet geçmişinde kalır. Chat Completions için geçerlidir.",
   "modelSettingsApplyToSelected": "Bu ayarlar seçilen tüm modellere uygulanır ve daha sonra ayrı ayrı değiştirilebilir.",
   "platformBedrock": "AWS Bedrock",
   "bedrock": {

@@ -417,6 +417,8 @@
   "openAiApiModeChatCompletions": "Chat Completions",
   "openAiApiModeResponses": "Responses",
   "openAiApiModeTip": "OpenAI 호환 프로토콜을 사용하는 모델에만 제공됩니다.",
+  "reasoningToolRoundOnly": "도구 호출 후 같은 턴을 계속할 때만 추론 재전송",
+  "reasoningToolRoundOnlyTip": "모델이 도구 결과를 받고 같은 턴을 계속할 때만 추론을 다시 보냅니다. 추론 기록은 로컬 대화 기록에 남습니다. Chat Completions에 적용됩니다.",
   "modelSettingsApplyToSelected": "이 설정은 선택한 모든 모델에 적용되며 나중에 개별적으로 변경할 수 있습니다.",
   "platformBedrock": "AWS Bedrock",
   "bedrock": {

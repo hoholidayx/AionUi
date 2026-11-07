@@ -7,7 +7,7 @@ import {
 } from '@/common/utils/modelCapabilities';
 import ModalHOC from '@/renderer/utils/ui/ModalHOC';
 import AionModal from '@/renderer/components/base/AionModal';
-import { Select } from '@arco-design/web-react';
+import { Select, Switch } from '@arco-design/web-react';
 import { PreviewOpen } from '@icon-park/react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -25,11 +25,18 @@ const AddModelModal = ModalHOC<{ data?: IProvider; model?: string; onSubmit: (mo
     const [modelProtocol, setModelProtocol] = useState<string>('openai');
     const [imageInput, setImageInput] = useState<ModelImageInputChoice>('auto');
     const [openAiApiMode, setOpenAiApiMode] = useState<ModelOpenAiApiModeChoice>('auto');
-    const isNewApi = isNewApiPlatform(data?.platform ?? '');
+    const [reasoningToolRoundOnly, setReasoningToolRoundOnly] = useState(false);
+    const platform = data?.platform ?? '';
+    const isNewApi = isNewApiPlatform(platform);
     const isEditing = Boolean(editingModel);
     const { data: modelList, isLoading } = useModeModeList(data?.platform, data?.base_url, data?.api_key);
     const existingModels = data?.models || [];
-    const showOpenAiApiMode = supportsOpenAiApiMode(data?.platform ?? '', modelProtocol);
+    const showOpenAiApiMode = supportsOpenAiApiMode(platform, modelProtocol);
+    const supportsChatCompletions =
+      ['openai', 'gemini'].includes(platform) ||
+      (!['anthropic', 'bedrock', 'gemini-vertex-ai'].includes(platform) &&
+        ['openai', 'gemini'].includes(modelProtocol));
+    const showReasoningToolRoundOnly = Boolean(data) && supportsChatCompletions && openAiApiMode !== 'responses';
     const optionsList = useMemo(() => {
       // 处理新的数据格式，可能包含 fix_base_url
       const fetchedModels = Array.isArray(modelList) ? modelList : modelList?.models || [];
@@ -46,6 +53,7 @@ const AddModelModal = ModalHOC<{ data?: IProvider; model?: string; onSubmit: (mo
       const settings = editingModel ? data?.model_settings?.[editingModel] : undefined;
       setImageInput(settings?.image_input ?? 'auto');
       setOpenAiApiMode(settings?.openai_api_mode ?? 'auto');
+      setReasoningToolRoundOnly(settings?.reasoning_tool_round_only ?? false);
       setModelProtocol(editingModel ? (data?.model_protocols?.[editingModel] ?? 'openai') : 'openai');
     }, [data, editingModel, modalProps.visible]);
 
@@ -59,7 +67,8 @@ const AddModelModal = ModalHOC<{ data?: IProvider; model?: string; onSubmit: (mo
           data.model_settings,
           targetModels,
           imageInput,
-          showOpenAiApiMode ? openAiApiMode : 'auto'
+          showOpenAiApiMode ? openAiApiMode : 'auto',
+          showReasoningToolRoundOnly ? reasoningToolRoundOnly : undefined
         ),
       };
 
@@ -83,8 +92,10 @@ const AddModelModal = ModalHOC<{ data?: IProvider; model?: string; onSubmit: (mo
       models,
       onSubmit,
       openAiApiMode,
+      reasoningToolRoundOnly,
       modalCtrl,
       showOpenAiApiMode,
+      showReasoningToolRoundOnly,
     ]);
 
     return (
@@ -168,6 +179,22 @@ const AddModelModal = ModalHOC<{ data?: IProvider; model?: string; onSubmit: (mo
                 ]}
               />
               <div className='text-11px text-t-secondary leading-4'>{t('settings.openAiApiModeTip')}</div>
+            </div>
+          )}
+
+          {showReasoningToolRoundOnly && (
+            <div className='space-y-8px'>
+              <div className='flex items-center justify-between gap-8px'>
+                <span className='text-13px font-500 text-t-secondary'>{t('settings.reasoningToolRoundOnly')}</span>
+                <Switch
+                  aria-label={t('settings.reasoningToolRoundOnly')}
+                  className='shrink-0'
+                  size='small'
+                  checked={reasoningToolRoundOnly}
+                  onChange={setReasoningToolRoundOnly}
+                />
+              </div>
+              <div className='text-11px text-t-secondary leading-4'>{t('settings.reasoningToolRoundOnlyTip')}</div>
             </div>
           )}
 

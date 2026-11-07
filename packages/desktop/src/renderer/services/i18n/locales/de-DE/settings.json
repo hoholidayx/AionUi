@@ -407,6 +407,8 @@
   "openAiApiModeChatCompletions": "Chat Completions",
   "openAiApiModeResponses": "Responses",
   "openAiApiModeTip": "Nur für Modelle mit OpenAI-kompatiblem Protokoll verfügbar.",
+  "reasoningToolRoundOnly": "Überlegungen nur beim Fortsetzen nach einem Toolaufruf erneut senden",
+  "reasoningToolRoundOnlyTip": "Die Überlegungen werden nur erneut gesendet, wenn das Modell das Toolergebnis erhält und dieselbe Runde fortsetzt. Sie bleiben im lokalen Chatverlauf gespeichert. Gilt für Chat Completions.",
   "modelSettingsApplyToSelected": "Diese Einstellungen gelten für alle ausgewählten Modelle und können später einzeln geändert werden.",
   "platformBedrock": "AWS Bedrock",
   "bedrock": {

@@ -2307,6 +2307,8 @@ export type I18nKey =
   | 'settings.proxyConfig'
   | 'settings.proxyHttpOnly'
   | 'settings.quickScan'
+  | 'settings.reasoningToolRoundOnly'
+  | 'settings.reasoningToolRoundOnlyTip'
   | 'settings.remoteAgent.add'
   | 'settings.remoteAgent.addTitle'
   | 'settings.remoteAgent.allowInsecure'

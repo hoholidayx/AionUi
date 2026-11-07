@@ -417,6 +417,8 @@
   "openAiApiModeChatCompletions": "Chat Completions",
   "openAiApiModeResponses": "Responses",
   "openAiApiModeTip": "Disponível apenas para modelos que usam um protocolo compatível com OpenAI.",
+  "reasoningToolRoundOnly": "Reenviar o raciocínio apenas ao continuar após uma chamada de ferramenta",
+  "reasoningToolRoundOnlyTip": "O raciocínio só é reenviado quando o modelo recebe o resultado da ferramenta e continua o mesmo turno. O registro permanece no histórico local da conversa. Aplica-se a Chat Completions.",
   "modelSettingsApplyToSelected": "Estas configurações se aplicam a todos os modelos selecionados e podem ser alteradas individualmente depois.",
   "platformBedrock": "AWS Bedrock",
   "bedrock": {

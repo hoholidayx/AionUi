@@ -425,6 +425,8 @@
   "openAiApiModeChatCompletions": "Chat Completions",
   "openAiApiModeResponses": "Responses",
   "openAiApiModeTip": "Доступно лише для моделей з OpenAI-сумісним протоколом.",
+  "reasoningToolRoundOnly": "Повторно надсилати міркування лише під час продовження після виклику інструмента",
+  "reasoningToolRoundOnlyTip": "Міркування надсилаються повторно, лише коли модель отримує результат інструмента й продовжує той самий хід. Запис зберігається в локальній історії чату. Застосовується до Chat Completions.",
   "modelSettingsApplyToSelected": "Ці налаштування застосовуються до всіх вибраних моделей і згодом можуть змінюватися окремо.",
   "platformBedrock": "AWS Bedrock",
   "bedrock": {

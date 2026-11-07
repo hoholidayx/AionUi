@@ -251,8 +251,22 @@ vi.mock('@arco-design/web-react', async (importOriginal) => {
         ? React.cloneElement(children as React.ReactElement<{ onClick?: () => void }>, { onClick: onOk })
         : children,
     Select: Object.assign(MockSelect, { Option: MockSelectOption }),
-    Switch: ({ checked, onChange }: { checked?: boolean; onChange?: (checked: boolean) => void }) => (
-      <button type='button' role='switch' aria-checked={checked} onClick={() => onChange?.(!checked)}>
+    Switch: ({
+      checked,
+      onChange,
+      'aria-label': label,
+    }: {
+      checked?: boolean;
+      onChange?: (checked: boolean) => void;
+      'aria-label'?: string;
+    }) => (
+      <button
+        type='button'
+        role='switch'
+        aria-label={label}
+        aria-checked={checked}
+        onClick={() => onChange?.(!checked)}
+      >
         switch
       </button>
     ),
@@ -350,6 +364,12 @@ describe('updateModelSettings', () => {
       )
     ).toEqual({ other: { image_input: 'supported' } });
   });
+
+  it('preserves the reasoning override when updating settings without an explicit switch value', () => {
+    expect(
+      updateModelSettings({ 'gpt-4o': { reasoning_tool_round_only: true } }, ['gpt-4o'], 'unsupported', 'auto')
+    ).toEqual({ 'gpt-4o': { image_input: 'unsupported', reasoning_tool_round_only: true } });
+  });
 });
 
 describe('model capability selectors', () => {
@@ -429,6 +449,83 @@ describe('model capability selectors', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'common.confirm' }));
     expect(mocks.onSubmit).toHaveBeenCalledWith(expect.objectContaining({ model_settings: {} }));
+  });
+
+  it('enables tool-round reasoning replay for only the edited model', () => {
+    render(
+      <AddModelModal
+        data={provider({ models: ['gpt-4o', 'other'], model_settings: { other: { image_input: 'supported' } } })}
+        model='gpt-4o'
+        modalProps={{ visible: true }}
+        modalCtrl={{ close: mocks.close }}
+        onSubmit={mocks.onSubmit}
+      />
+    );
+
+    const toggle = screen.getByRole('switch', { name: 'settings.reasoningToolRoundOnly' });
+    expect(toggle).not.toBeChecked();
+    fireEvent.click(toggle);
+    fireEvent.click(screen.getByRole('button', { name: 'common.confirm' }));
+
+    expect(mocks.onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        model_settings: {
+          'gpt-4o': { reasoning_tool_round_only: true },
+          other: { image_input: 'supported' },
+        },
+      })
+    );
+  });
+
+  it('reads and disables tool-round reasoning replay without changing the other model settings', () => {
+    render(
+      <AddModelModal
+        data={provider({
+          model_settings: {
+            'gpt-4o': {
+              image_input: 'unsupported',
+              openai_api_mode: 'chat_completions',
+              reasoning_tool_round_only: true,
+            },
+          },
+        })}
+        model='gpt-4o'
+        modalProps={{ visible: true }}
+        modalCtrl={{ close: mocks.close }}
+        onSubmit={mocks.onSubmit}
+      />
+    );
+
+    const toggle = screen.getByRole('switch', { name: 'settings.reasoningToolRoundOnly' });
+    expect(toggle).toBeChecked();
+    fireEvent.click(toggle);
+    fireEvent.click(screen.getByRole('button', { name: 'common.confirm' }));
+
+    expect(mocks.onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        model_settings: { 'gpt-4o': { image_input: 'unsupported', openai_api_mode: 'chat_completions' } },
+      })
+    );
+  });
+
+  it.each([
+    { platform: 'anthropic' },
+    { platform: 'bedrock' },
+    { platform: 'gemini-vertex-ai' },
+    { platform: 'new-api', model_protocols: { 'gpt-4o': 'anthropic' } },
+    { platform: 'custom', model_settings: { 'gpt-4o': { openai_api_mode: 'responses' as const } } },
+  ])('hides the tool-round reasoning toggle for unsupported settings %j', (overrides) => {
+    render(
+      <AddModelModal
+        data={provider(overrides)}
+        model='gpt-4o'
+        modalProps={{ visible: true }}
+        modalCtrl={{ close: mocks.close }}
+        onSubmit={mocks.onSubmit}
+      />
+    );
+
+    expect(screen.queryByRole('switch', { name: 'settings.reasoningToolRoundOnly' })).not.toBeInTheDocument();
   });
 
   it('does not submit when provider data is unavailable', () => {
