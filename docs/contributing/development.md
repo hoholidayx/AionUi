@@ -76,6 +76,34 @@ aioncore --help
 
 If `where.exe aioncore` prints nothing, make sure `%USERPROFILE%\.cargo\bin` is in your user `Path`, open a new PowerShell window, and verify again.
 
+#### Build the macOS backend with the local AionRS checkout
+
+Keep the `AionUi`, `AionCore`, and `aionrs` checkouts in the same parent directory. This AionCore checkout resolves its AionRS dependencies from `../aionrs`. The local AionRS checkout uses `~/.aionrs` by default on macOS and migrates the legacy directory if the new directory is absent. If both directories exist, it uses `~/.aionrs` and preserves the legacy directory.
+
+From the AionUi repository, build the linked backend.
+
+```bash
+(
+  cd ../AionCore
+  CARGO_PROFILE_RELEASE_STRIP=none CARGO_PROFILE_RELEASE_BUILD_OVERRIDE_STRIP=none \
+    cargo +1.96.1 build --locked --release -p aionui-app
+)
+```
+
+For a source WebUI run, set `AIONUI_BACKEND_BIN` to the resulting `target/release/aioncore`. To package it after building the Web renderer, run these commands from AionUi.
+
+```bash
+bundle_stage=$(mktemp -d)
+bundle_dir="$bundle_stage/bundle"
+mkdir "$bundle_dir"
+cp ../AionCore/target/release/aioncore "$bundle_dir/aioncore"
+"$bundle_dir/aioncore" --data-dir "$bundle_stage/prepare-data" prepare-managed-resources \
+  --bundle-out "$bundle_dir/managed-resources"
+AIONUI_BACKEND_LOCAL_BUNDLE_DIR="$bundle_dir" node scripts/pack-web-cli.js
+```
+
+For a local macOS production deployment, extract the Web package into `out/web-production` and run `python3 packages/web-cli/manageWebService.py start`. The manager listens on the LAN by default and keeps its data in `~/.aionui-web`. To use loopback for a launch, run `AIONUI_ALLOW_REMOTE=0 python3 packages/web-cli/manageWebService.py restart`. The same script supports `status` and `stop`.
+
 ### 3. Start AionUi
 
 Run these commands from the `AionUi` repository in a terminal where `aioncore` is discoverable.

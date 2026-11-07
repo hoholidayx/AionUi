@@ -1,9 +1,10 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { promises as fs } from 'node:fs';
 import http from 'node:http';
+import { once } from 'node:events';
+import { connect, type AddressInfo } from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
-import type { AddressInfo } from 'node:net';
 import { startStaticServer, type StaticServerHandle } from './static-server.js';
 
 async function mkRendererFixture(): Promise<string> {
@@ -419,5 +420,24 @@ describe('static-server', () => {
     // may still be undefined on CI machines without a LAN interface
     expect(typeof h2.networkUrl === 'string' || h2.networkUrl === undefined).toBe(true);
     await h2.stop();
+  });
+
+  it('stops with a client that is still connected', async () => {
+    const backend = await startMockBackend((_req, res) => res.end('nope'));
+    stopBackend = backend.close;
+    handle = await startStaticServer({ staticDir, backendPort: backend.port, port: 0 });
+    const client = connect({ host: '127.0.0.1', port: handle.port });
+    try {
+      const response = once(client, 'data');
+      client.write('GET / HTTP/1.1\r\nHost: localhost\r\n\r\n');
+      await response;
+      const closed = new Promise<void>((resolve) => client.once('close', () => resolve()));
+      // A server-initiated disconnect can be reported as a reset.
+      client.on('error', () => undefined);
+      await Promise.all([closed, handle.stop()]);
+      handle = null;
+    } finally {
+      client.destroy();
+    }
   });
 });

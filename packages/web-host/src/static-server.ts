@@ -220,7 +220,10 @@ export async function startStaticServer(opts: StaticServerOptions): Promise<Stat
   // route to either the backend (for /ws and /api/stt/stream upgrades) or the internal HTTP
   // server (everything else). Both routes use raw TCP splice — no reliance
   // on http.Server's upgrade event.
+  const clients = new Set<Socket>();
   const tcp_server = net.createServer((client: Socket) => {
+    clients.add(client);
+    client.once('close', () => clients.delete(client));
     let peeked = Buffer.alloc(0);
     let settled = false;
     const cleanup = (): void => {
@@ -276,6 +279,8 @@ export async function startStaticServer(opts: StaticServerOptions): Promise<Stat
         tcp_server.close(() => {
           http_server.close(() => resolve());
         });
+        // Long-lived upgrades would otherwise keep the listener from closing.
+        for (const client of clients) client.destroy();
       }),
   };
 }
