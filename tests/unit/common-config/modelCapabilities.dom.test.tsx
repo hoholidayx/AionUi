@@ -365,10 +365,10 @@ describe('updateModelSettings', () => {
     ).toEqual({ other: { image_input: 'supported' } });
   });
 
-  it('preserves the reasoning override when updating settings without an explicit switch value', () => {
+  it.each([true, false])('preserves the reasoning override %s when editing other settings', (enabled) => {
     expect(
-      updateModelSettings({ 'gpt-4o': { reasoning_tool_round_only: true } }, ['gpt-4o'], 'unsupported', 'auto')
-    ).toEqual({ 'gpt-4o': { image_input: 'unsupported', reasoning_tool_round_only: true } });
+      updateModelSettings({ 'gpt-4o': { reasoning_tool_round_only: enabled } }, ['gpt-4o'], 'unsupported', 'auto')
+    ).toEqual({ 'gpt-4o': { image_input: 'unsupported', reasoning_tool_round_only: enabled } });
   });
 });
 
@@ -451,10 +451,44 @@ describe('model capability selectors', () => {
     expect(mocks.onSubmit).toHaveBeenCalledWith(expect.objectContaining({ model_settings: {} }));
   });
 
-  it('enables tool-round reasoning replay for only the edited model', () => {
+  it('defaults to tool-round reasoning replay and saves an opt-out for only the edited model', () => {
     render(
       <AddModelModal
         data={provider({ models: ['gpt-4o', 'other'], model_settings: { other: { image_input: 'supported' } } })}
+        model='gpt-4o'
+        modalProps={{ visible: true }}
+        modalCtrl={{ close: mocks.close }}
+        onSubmit={mocks.onSubmit}
+      />
+    );
+
+    const toggle = screen.getByRole('switch', { name: 'settings.reasoningToolRoundOnly' });
+    expect(toggle).toBeChecked();
+    fireEvent.click(toggle);
+    fireEvent.click(screen.getByRole('button', { name: 'common.confirm' }));
+
+    expect(mocks.onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        model_settings: {
+          'gpt-4o': { reasoning_tool_round_only: false },
+          other: { image_input: 'supported' },
+        },
+      })
+    );
+  });
+
+  it('reads and re-enables an opted-out model without changing its other settings', () => {
+    render(
+      <AddModelModal
+        data={provider({
+          model_settings: {
+            'gpt-4o': {
+              image_input: 'unsupported',
+              openai_api_mode: 'chat_completions',
+              reasoning_tool_round_only: false,
+            },
+          },
+        })}
         model='gpt-4o'
         modalProps={{ visible: true }}
         modalCtrl={{ close: mocks.close }}
@@ -470,40 +504,12 @@ describe('model capability selectors', () => {
     expect(mocks.onSubmit).toHaveBeenCalledWith(
       expect.objectContaining({
         model_settings: {
-          'gpt-4o': { reasoning_tool_round_only: true },
-          other: { image_input: 'supported' },
-        },
-      })
-    );
-  });
-
-  it('reads and disables tool-round reasoning replay without changing the other model settings', () => {
-    render(
-      <AddModelModal
-        data={provider({
-          model_settings: {
-            'gpt-4o': {
-              image_input: 'unsupported',
-              openai_api_mode: 'chat_completions',
-              reasoning_tool_round_only: true,
-            },
+          'gpt-4o': {
+            image_input: 'unsupported',
+            openai_api_mode: 'chat_completions',
+            reasoning_tool_round_only: true,
           },
-        })}
-        model='gpt-4o'
-        modalProps={{ visible: true }}
-        modalCtrl={{ close: mocks.close }}
-        onSubmit={mocks.onSubmit}
-      />
-    );
-
-    const toggle = screen.getByRole('switch', { name: 'settings.reasoningToolRoundOnly' });
-    expect(toggle).toBeChecked();
-    fireEvent.click(toggle);
-    fireEvent.click(screen.getByRole('button', { name: 'common.confirm' }));
-
-    expect(mocks.onSubmit).toHaveBeenCalledWith(
-      expect.objectContaining({
-        model_settings: { 'gpt-4o': { image_input: 'unsupported', openai_api_mode: 'chat_completions' } },
+        },
       })
     );
   });

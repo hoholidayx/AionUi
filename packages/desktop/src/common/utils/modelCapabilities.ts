@@ -83,7 +83,7 @@ export const updateModelSettings = (
 
   for (const modelId of modelIds) {
     const toolRoundOnly = reasoningToolRoundOnly ?? next[modelId]?.reasoning_tool_round_only;
-    if (imageInput === 'auto' && openAiApiMode === 'auto' && !toolRoundOnly) {
+    if (imageInput === 'auto' && openAiApiMode === 'auto' && toolRoundOnly === undefined) {
       delete next[modelId];
       continue;
     }
@@ -91,7 +91,7 @@ export const updateModelSettings = (
     const settings: ModelSettings = {};
     if (imageInput !== 'auto') settings.image_input = imageInput;
     if (openAiApiMode !== 'auto') settings.openai_api_mode = openAiApiMode;
-    if (toolRoundOnly) settings.reasoning_tool_round_only = true;
+    if (toolRoundOnly !== undefined) settings.reasoning_tool_round_only = toolRoundOnly;
     next[modelId] = settings;
   }
 

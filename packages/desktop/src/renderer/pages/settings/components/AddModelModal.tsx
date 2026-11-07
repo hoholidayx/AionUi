@@ -25,7 +25,7 @@ const AddModelModal = ModalHOC<{ data?: IProvider; model?: string; onSubmit: (mo
     const [modelProtocol, setModelProtocol] = useState<string>('openai');
     const [imageInput, setImageInput] = useState<ModelImageInputChoice>('auto');
     const [openAiApiMode, setOpenAiApiMode] = useState<ModelOpenAiApiModeChoice>('auto');
-    const [reasoningToolRoundOnly, setReasoningToolRoundOnly] = useState(false);
+    const [reasoningToolRoundOnly, setReasoningToolRoundOnly] = useState<boolean>();
     const platform = data?.platform ?? '';
     const isNewApi = isNewApiPlatform(platform);
     const isEditing = Boolean(editingModel);
@@ -53,7 +53,7 @@ const AddModelModal = ModalHOC<{ data?: IProvider; model?: string; onSubmit: (mo
       const settings = editingModel ? data?.model_settings?.[editingModel] : undefined;
       setImageInput(settings?.image_input ?? 'auto');
       setOpenAiApiMode(settings?.openai_api_mode ?? 'auto');
-      setReasoningToolRoundOnly(settings?.reasoning_tool_round_only ?? false);
+      setReasoningToolRoundOnly(settings?.reasoning_tool_round_only);
       setModelProtocol(editingModel ? (data?.model_protocols?.[editingModel] ?? 'openai') : 'openai');
     }, [data, editingModel, modalProps.visible]);
 
@@ -190,7 +190,7 @@ const AddModelModal = ModalHOC<{ data?: IProvider; model?: string; onSubmit: (mo
                   aria-label={t('settings.reasoningToolRoundOnly')}
                   className='shrink-0'
                   size='small'
-                  checked={reasoningToolRoundOnly}
+                  checked={reasoningToolRoundOnly ?? true}
                   onChange={setReasoningToolRoundOnly}
                 />
               </div>
