@@ -58,6 +58,29 @@ const ModalMcpManagementSection: React.FC<{
     () => mcpServers.filter((server) => !isBuiltinImageGenServer(server)),
     [mcpServers]
   );
+  const imageBackends = mcpServers.filter(
+    (server) => server.enabled && !server.builtin && server.purpose === 'async_image'
+  );
+  const defaultImageBackend = imageBackends.find((server) => server.is_default)?.id ?? '';
+  const [savingDefaultImageBackend, setSavingDefaultImageBackend] = useState(false);
+
+  const updateDefaultImageBackend = async (id: string) => {
+    if (savingDefaultImageBackend || id === defaultImageBackend) return;
+    setSavingDefaultImageBackend(true);
+    try {
+      await mcpService.setDefaultImageBackend.invoke({ server_id: id || null });
+      await saveMcpServers((servers) =>
+        servers.map((server) => {
+          const isDefault = server.id === id;
+          return Boolean(server.is_default) === isDefault ? server : { ...server, is_default: isDefault };
+        })
+      );
+    } catch {
+      message.error(t('settings.mcpSyncError'));
+    } finally {
+      setSavingDefaultImageBackend(false);
+    }
+  };
 
   const handleAuthRequired = useCallback(
     (server: IMcpServer) => {
@@ -192,6 +215,23 @@ const ModalMcpManagementSection: React.FC<{
         <div className='text-14px text-t-primary'>{t('settings.mcpSettings')}</div>
         <div>{renderAddButton()}</div>
       </div>
+
+      {imageBackends.length > 0 && (
+        <div className='flex flex-wrap items-center justify-between gap-8px'>
+          <span className='text-14px text-t-primary'>{t('settings.mcpAsyncImageDefault')}</span>
+          <AionSelect
+            aria-label={t('settings.mcpAsyncImageDefault')}
+            className='w-240px max-w-full'
+            value={defaultImageBackend}
+            disabled={savingDefaultImageBackend}
+            options={[
+              { value: '', label: t('conversation.welcome.none') },
+              ...imageBackends.map((server) => ({ value: server.id, label: server.name })),
+            ]}
+            onChange={(id: string) => void updateDefaultImageBackend(id)}
+          />
+        </div>
+      )}
 
       <div className='flex-1 min-h-0'>
         {visibleMcpServers.length === 0 && extensionMcpServers.length === 0 ? (

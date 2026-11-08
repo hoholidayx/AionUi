@@ -5,13 +5,16 @@
  */
 
 import React from 'react';
+import type { IMcpServer } from '@/common/config/storage';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { SettingsTabNavigateProvider } from '@/renderer/components/settings/SettingsModal/settingsViewContext';
 
 const hooks = vi.hoisted(() => ({
   modelListWithImage: [] as unknown[],
-  mcpServers: [] as unknown[],
+  mcpServers: [] as IMcpServer[],
+  saveMcpServers: vi.fn<(updater: (servers: IMcpServer[]) => IMcpServer[]) => Promise<void>>(),
+  setDefaultImageBackend: vi.fn(),
   getClientBusinessSetting: vi.fn(() => Promise.resolve(undefined)),
 }));
 
@@ -24,7 +27,32 @@ vi.mock('@/renderer/components/base/AionScrollArea', () => ({
 }));
 
 vi.mock('@/renderer/components/base/AionSelect', () => {
-  const Select = ({ children }: { children?: React.ReactNode }) => <div>{children}</div>;
+  const Select = ({
+    children,
+    options,
+    value,
+    onChange,
+    disabled,
+    'aria-label': label,
+  }: {
+    children?: React.ReactNode;
+    options?: Array<{ value: string; label: string }>;
+    value?: string;
+    onChange?: (id: string) => void;
+    disabled?: boolean;
+    'aria-label'?: string;
+  }) =>
+    options ? (
+      <select aria-label={label} value={value} disabled={disabled} onChange={(event) => onChange?.(event.target.value)}>
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+    ) : (
+      <div>{children}</div>
+    );
   return { default: Object.assign(Select, { OptGroup: Select, Option: Select }) };
 });
 
@@ -48,7 +76,7 @@ vi.mock('@/renderer/hooks/mcp', () => ({
   useMcpServers: () => ({
     mcpServers: hooks.mcpServers,
     extensionMcpServers: [],
-    saveMcpServers: vi.fn(() => Promise.resolve()),
+    saveMcpServers: hooks.saveMcpServers,
     setMcpServers: vi.fn(),
     isMcpServersLoading: false,
   }),
@@ -90,15 +118,31 @@ vi.mock('@/renderer/services/clientBusinessSettings', () => ({
 }));
 
 vi.mock('@/common/adapter/ipcBridge', () => ({
-  mcpService: {},
+  mcpService: { setDefaultImageBackend: { invoke: hooks.setDefaultImageBackend } },
 }));
 
 import ToolsModalContent from '@/renderer/components/settings/SettingsModal/contents/ToolsModalContent';
+
+const imageServer = (id: string, overrides: Partial<IMcpServer> = {}): IMcpServer => ({
+  id,
+  name: id,
+  purpose: 'async_image',
+  enabled: true,
+  transport: { type: 'http', url: 'https://example.com/mcp' },
+  created_at: 0,
+  updated_at: 0,
+  original_json: '{}',
+  ...overrides,
+});
 
 describe('ToolsModalContent image model guide', () => {
   beforeEach(() => {
     hooks.modelListWithImage = [];
     hooks.mcpServers = [];
+    hooks.setDefaultImageBackend.mockReset().mockResolvedValue(undefined);
+    hooks.saveMcpServers.mockReset().mockImplementation(async (update) => {
+      hooks.mcpServers = update(hooks.mcpServers);
+    });
     hooks.getClientBusinessSetting.mockClear();
     Object.defineProperty(window, 'matchMedia', {
       writable: true,
@@ -144,5 +188,43 @@ describe('ToolsModalContent image model guide', () => {
       (a) => a.textContent === 'settings.goToModelSettings'
     );
     expect(links).toHaveLength(0);
+  });
+
+  it('offers only enabled async image MCPs and saves or clears the account default separately', async () => {
+    hooks.mcpServers = [
+      imageServer('Existing', { is_default: true }),
+      imageServer('Alternative'),
+      imageServer('Disabled', { enabled: false }),
+      imageServer('General', { purpose: 'general' }),
+      imageServer('Builtin', { builtin: true }),
+    ];
+    const { rerender } = render(<ToolsModalContent />);
+    const selector = screen.getByRole('combobox', { name: 'settings.mcpAsyncImageDefault' });
+    expect(Array.from((selector as HTMLSelectElement).options, (option) => option.value)).toEqual([
+      '',
+      'Existing',
+      'Alternative',
+    ]);
+
+    fireEvent.change(selector, { target: { value: 'Alternative' } });
+    await waitFor(() => expect(hooks.saveMcpServers).toHaveBeenCalled());
+    rerender(<ToolsModalContent />);
+    await waitFor(() => expect(selector).toHaveValue('Alternative'));
+    fireEvent.change(selector, { target: { value: '' } });
+    await waitFor(() =>
+      expect(hooks.setDefaultImageBackend.mock.calls).toEqual([[{ server_id: 'Alternative' }], [{ server_id: null }]])
+    );
+  });
+
+  it('preserves the current account default when the backend rejects a change', async () => {
+    hooks.mcpServers = [imageServer('Existing', { is_default: true }), imageServer('Alternative')];
+    hooks.setDefaultImageBackend.mockRejectedValueOnce(new Error('Unavailable'));
+    render(<ToolsModalContent />);
+    const selector = screen.getByRole('combobox', { name: 'settings.mcpAsyncImageDefault' });
+
+    fireEvent.change(selector, { target: { value: 'Alternative' } });
+    await screen.findByText('settings.mcpSyncError');
+    expect(selector).toHaveValue('Existing');
+    expect(hooks.saveMcpServers).not.toHaveBeenCalled();
   });
 });

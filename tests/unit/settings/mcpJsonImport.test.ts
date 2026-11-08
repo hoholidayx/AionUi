@@ -129,7 +129,7 @@ describe('parseMcpJsonImport', () => {
     });
   });
 
-  it('carries explicit image generation roles for multiple HTTP servers', () => {
+  it('carries image generation roles without importing either legacy default', () => {
     expect(
       parseMcpJsonImport({
         mcpServers: {
@@ -139,14 +139,14 @@ describe('parseMcpJsonImport', () => {
             purpose: 'async_image',
             is_default: true,
           },
-          secondary: { type: 'http', url: 'https://example.org/sse', purpose: 'async_image' },
+          secondary: { type: 'http', url: 'https://example.org/sse', purpose: 'async_image', is_default: true },
           docs: { type: 'http', url: 'https://example.net/mcp' },
         },
       })
     ).toMatchObject({
       isValid: true,
       servers: [
-        { name: 'primary', transport: { type: 'http' }, purpose: 'async_image', is_default: true },
+        { name: 'primary', transport: { type: 'http' }, purpose: 'async_image' },
         { name: 'secondary', transport: { type: 'http' }, purpose: 'async_image' },
         { name: 'docs', transport: { type: 'http' } },
       ],
@@ -159,10 +159,12 @@ describe('parseMcpJsonImport', () => {
     ).toEqual({ isValid: false, errorKey: 'settings.mcpAsyncImageHttpRequired' });
   });
 
-  it('rejects defaults without the asynchronous image generation role', () => {
-    expect(parseMcpJsonImport({ docs: { url: 'https://example.com/mcp', is_default: true } })).toEqual({
-      isValid: false,
-      errorKey: 'settings.mcpJsonFormatError',
-    });
+  it('discards the legacy default even in original JSON and for general servers', () => {
+    const result = parseMcpJsonImport({ docs: { url: 'https://example.com/mcp', is_default: true } });
+    expect(result.isValid).toBe(true);
+    if (result.isValid) {
+      expect(result.servers[0]).not.toHaveProperty('is_default');
+      expect(result.servers[0].originalConfig).toEqual({ url: 'https://example.com/mcp' });
+    }
   });
 });

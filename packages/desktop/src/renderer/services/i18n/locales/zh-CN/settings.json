@@ -688,7 +688,7 @@
   "mcpPurpose": "MCP 用途",
   "mcpPurposeGeneral": "通用工具",
   "mcpPurposeAsyncImage": "异步生图",
-  "mcpAsyncImageDefault": "设为默认生图服务",
+  "mcpAsyncImageDefault": "默认生图后端",
   "mcpAsyncImageDefaultLabel": "异步生图（默认）",
   "mcpAsyncImageHttpRequired": "异步生图需要使用 Streamable HTTP。",
   "mcpServerList": "MCP 服务器",

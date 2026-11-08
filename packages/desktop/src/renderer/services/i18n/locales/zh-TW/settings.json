@@ -688,7 +688,7 @@
   "mcpPurpose": "MCP 用途",
   "mcpPurposeGeneral": "通用工具",
   "mcpPurposeAsyncImage": "非同步圖片生成",
-  "mcpAsyncImageDefault": "設為預設圖片生成服務",
+  "mcpAsyncImageDefault": "預設生圖後端",
   "mcpAsyncImageDefaultLabel": "非同步圖片生成（預設）",
   "mcpAsyncImageHttpRequired": "非同步圖片生成需要使用 Streamable HTTP。",
   "mcpServerList": "MCP 伺服器",

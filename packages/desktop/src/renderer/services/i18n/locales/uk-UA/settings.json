@@ -694,7 +694,7 @@
   "mcpPurpose": "Призначення MCP",
   "mcpPurposeGeneral": "Інструменти загального призначення",
   "mcpPurposeAsyncImage": "Асинхронне створення зображень",
-  "mcpAsyncImageDefault": "Використовувати як генератор зображень за замовчуванням",
+  "mcpAsyncImageDefault": "Типовий сервіс генерації зображень",
   "mcpAsyncImageDefaultLabel": "Асинхронне створення зображень (за замовчуванням)",
   "mcpAsyncImageHttpRequired": "Для асинхронного створення зображень потрібен Streamable HTTP.",
   "mcpServerList": "Сервери MCP",

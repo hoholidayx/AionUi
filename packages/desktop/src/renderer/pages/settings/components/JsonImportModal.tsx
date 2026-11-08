@@ -1,5 +1,5 @@
 import type { IMcpServer, IMcpServerTransport, McpServerPurpose } from '@/common/config/storage';
-import { Alert, Button, Checkbox, Select } from '@arco-design/web-react';
+import { Alert, Button, Select } from '@arco-design/web-react';
 import React, { useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import CodeMirror from '@uiw/react-codemirror';
@@ -147,11 +147,11 @@ const parseEditableServer = (input: string): ParsedMcpJsonServer | undefined => 
   return undefined;
 };
 
-const withAsyncImageSettings = (server: ParsedMcpJsonServer, purpose: McpServerPurpose, isDefault: boolean): string =>
+const serializeParsedServer = (server: ParsedMcpJsonServer, purpose = server.purpose): string =>
   JSON.stringify(
     {
       mcpServers: {
-        [server.name]: { ...server.originalConfig, purpose, is_default: purpose === 'async_image' && isDefault },
+        [server.name]: { ...server.originalConfig, ...(purpose !== undefined && { purpose }) },
       },
     },
     null,
@@ -220,14 +220,7 @@ const JsonImportModal: React.FC<JsonImportModalProps> = ({ visible, server, onCa
     if (visible && server) {
       const original = server.original_json || buildOriginalJson(server.name, server.description, server.transport);
       const parsed = parseEditableServer(original);
-      // Another server may have become the default since this JSON was saved.
-      setJsonInput(
-        parsed &&
-          server.purpose !== undefined &&
-          (parsed.purpose !== server.purpose || parsed.is_default !== server.is_default)
-          ? withAsyncImageSettings(parsed, server.purpose, server.is_default === true)
-          : original
-      );
+      setJsonInput(parsed ? serializeParsedServer(parsed, server.purpose) : original);
     } else if (visible && !server) {
       // 新建模式下清空JSON输入
       setJsonInput('');
@@ -247,11 +240,7 @@ const JsonImportModal: React.FC<JsonImportModalProps> = ({ visible, server, onCa
     };
   };
 
-  const toImportableServer = (
-    parsedServer: ParsedMcpJsonServer,
-    originalJson: string,
-    enabled: boolean
-  ): ImportableMcpServer => {
+  const toImportableServer = (parsedServer: ParsedMcpJsonServer, enabled: boolean): ImportableMcpServer => {
     const transport = normalizeParsedTransport(parsedServer.transport);
     return {
       name: parsedServer.name,
@@ -259,10 +248,9 @@ const JsonImportModal: React.FC<JsonImportModalProps> = ({ visible, server, onCa
       enabled,
       transport,
       ...(parsedServer.purpose !== undefined && { purpose: parsedServer.purpose }),
-      ...(parsedServer.is_default !== undefined && { is_default: parsedServer.is_default }),
       last_test_status: 'disconnected',
       tools: [],
-      original_json: originalJson || buildOriginalJson(parsedServer.name, parsedServer.description, transport),
+      original_json: serializeParsedServer(parsedServer),
     };
   };
 
@@ -303,18 +291,9 @@ const JsonImportModal: React.FC<JsonImportModalProps> = ({ visible, server, onCa
 
     setSubmitting(true);
 
-    // 如果有多个服务器，使用批量导入
-    if (parsedServers.length > 1 && onBatchImport) {
-      const serversToImport = parsedServers.map((parsedServer) =>
-        toImportableServer(
-          parsedServer,
-          JSON.stringify({ mcpServers: { [parsedServer.name]: parsedServer.originalConfig } }, null, 2),
-          true
-        )
-      );
-
+    if (!server && onBatchImport) {
       try {
-        await onBatchImport(serversToImport);
+        await onBatchImport(parsedServers.map((parsedServer) => toImportableServer(parsedServer, true)));
         onCancel();
       } finally {
         setSubmitting(false);
@@ -324,7 +303,7 @@ const JsonImportModal: React.FC<JsonImportModalProps> = ({ visible, server, onCa
 
     // 单个服务器导入
     try {
-      await onSubmit(toImportableServer(parsedServers[0], jsonInput, server?.enabled ?? true));
+      await onSubmit(toImportableServer(parsedServers[0], server?.enabled ?? true));
       onCancel();
     } finally {
       setSubmitting(false);
@@ -356,19 +335,9 @@ const JsonImportModal: React.FC<JsonImportModalProps> = ({ visible, server, onCa
                 { label: t('settings.mcpPurposeAsyncImage'), value: 'async_image' },
               ]}
               onChange={(purpose: McpServerPurpose) => {
-                setJsonInput(withAsyncImageSettings(editableServer, purpose, editableServer.is_default === true));
+                setJsonInput(serializeParsedServer(editableServer, purpose));
               }}
             />
-            {editableServer.purpose === 'async_image' && (
-              <Checkbox
-                checked={editableServer.is_default === true}
-                onChange={(checked) => {
-                  setJsonInput(withAsyncImageSettings(editableServer, 'async_image', checked));
-                }}
-              >
-                {t('settings.mcpAsyncImageDefault')}
-              </Checkbox>
-            )}
           </div>
         )}
         <div>

@@ -38,7 +38,7 @@ MB 级 base64。
 
 ## 接入异步生图 MCP
 
-在 Aion 的「设置 → 工具 → MCP」导入 Streamable HTTP 配置。将用途设为「异步生图」，按需勾选「设为默认生图服务」。也可以直接导入包含用途的 JSON。
+在 Aion 的「设置 → 工具 → MCP」导入 Streamable HTTP 配置，并将用途设为「异步生图」。也可以直接导入包含用途的 JSON。
 
 ```json
 {
@@ -47,14 +47,15 @@ MB 级 base64。
       "type": "streamable_http",
       "url": "http://127.0.0.1:8790/mcp/example",
       "headers": { "Authorization": "Bearer replace-with-mcp-token" },
-      "purpose": "async_image",
-      "is_default": true
+      "purpose": "async_image"
     }
   }
 }
 ```
 
 上例是独立子项目 `aion-openai-image-mcp` 的一个 profile。用该项目的 `uv` 管理入口启动服务，填入 profile 的 MCP 地址和访问令牌。供应商 API Key 由子项目配置。其他兼容的 MCP 服务可使用各自的地址和认证配置。
+
+导入只添加或更新连接，旧 JSON 中的 `is_default` 不会更改账号默认值。在「设置 → 工具 → MCP」的「默认生图后端」单独设置，候选项仅包含已启用的异步生图 MCP。
 
 导入并启用后，可在原生 Aion 的新会话和现有会话输入区选择生图后端，或选择「使用全局默认」。聊天中也可以点名后端，只覆盖该次任务。会话里的 MCP 工具菜单继续管理通用工具。服务可以同时提供异步生图和通用工具。
 

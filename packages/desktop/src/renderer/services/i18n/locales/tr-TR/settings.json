@@ -688,7 +688,7 @@
   "mcpPurpose": "MCP kullanım amacı",
   "mcpPurposeGeneral": "Genel araçlar",
   "mcpPurposeAsyncImage": "Eşzamansız görsel oluşturma",
-  "mcpAsyncImageDefault": "Varsayılan görsel oluşturucu olarak kullan",
+  "mcpAsyncImageDefault": "Varsayılan görsel oluşturma arka ucu",
   "mcpAsyncImageDefaultLabel": "Eşzamansız görsel oluşturma (varsayılan)",
   "mcpAsyncImageHttpRequired": "Eşzamansız görsel oluşturma için Streamable HTTP gerekir.",
   "mcpServerList": "MCP Sunucuları",

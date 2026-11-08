@@ -678,7 +678,7 @@
   "mcpPurpose": "MCP-Verwendung",
   "mcpPurposeGeneral": "Allgemeine Werkzeuge",
   "mcpPurposeAsyncImage": "Asynchrone Bildgenerierung",
-  "mcpAsyncImageDefault": "Als Standard für die Bildgenerierung festlegen",
+  "mcpAsyncImageDefault": "Standard-Backend für die Bilderzeugung",
   "mcpAsyncImageDefaultLabel": "Asynchrone Bildgenerierung (Standard)",
   "mcpAsyncImageHttpRequired": "Asynchrone Bildgenerierung erfordert Streamable HTTP.",
   "mcpServerList": "MCP-Server",

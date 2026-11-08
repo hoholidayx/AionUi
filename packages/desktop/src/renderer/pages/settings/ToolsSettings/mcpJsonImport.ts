@@ -12,7 +12,6 @@ export type ParsedMcpJsonServer = {
   description: string;
   transport: IMcpServerTransport;
   purpose?: McpServerPurpose;
-  is_default?: boolean;
   originalConfig: Record<string, unknown>;
 };
 
@@ -131,18 +130,14 @@ const parseServer = (
   if (transportResult.isValid === false) return transportResult;
 
   const purpose = config.purpose === 'general' || config.purpose === 'async_image' ? config.purpose : undefined;
-  const isDefault = typeof config.is_default === 'boolean' ? config.is_default : undefined;
-  if (
-    (config.purpose !== undefined && purpose === undefined) ||
-    (config.is_default !== undefined && isDefault === undefined) ||
-    (isDefault === true && purpose !== 'async_image')
-  ) {
+  if (config.purpose !== undefined && purpose === undefined) {
     return { isValid: false, errorKey: 'settings.mcpJsonFormatError' };
   }
   if (purpose === 'async_image' && transportResult.transport.type !== 'http') {
     return { isValid: false, errorKey: 'settings.mcpAsyncImageHttpRequired' };
   }
 
+  const { is_default: _legacyDefault, ...originalConfig } = config;
   return {
     isValid: true,
     server: {
@@ -150,8 +145,7 @@ const parseServer = (
       description: stringOrUndefined(config.description) || IMPORTED_DESCRIPTION,
       transport: transportResult.transport,
       ...(purpose !== undefined && { purpose }),
-      ...(isDefault !== undefined && { is_default: isDefault }),
-      originalConfig: config,
+      originalConfig,
     },
   };
 };

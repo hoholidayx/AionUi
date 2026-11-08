@@ -688,7 +688,7 @@
   "mcpPurpose": "کاربرد MCP",
   "mcpPurposeGeneral": "ابزارهای عمومی",
   "mcpPurposeAsyncImage": "تولید ناهمگام تصویر",
-  "mcpAsyncImageDefault": "استفاده به‌عنوان مولد پیش‌فرض تصویر",
+  "mcpAsyncImageDefault": "سرویس پیش‌فرض تولید تصویر",
   "mcpAsyncImageDefaultLabel": "تولید ناهمگام تصویر (پیش‌فرض)",
   "mcpAsyncImageHttpRequired": "تولید ناهمگام تصویر به Streamable HTTP نیاز دارد.",
   "mcpServerList": "سرورهای MCP",

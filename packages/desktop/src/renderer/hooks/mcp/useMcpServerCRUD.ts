@@ -14,17 +14,8 @@ const mergeServerState = (persisted: IMcpServer, fallback?: Partial<IMcpServer>)
   original_json: fallback?.original_json ?? persisted.original_json,
 });
 
-const clearOtherDefaults = (servers: IMcpServer[], nextServer: IMcpServer) =>
-  nextServer.is_default
-    ? servers.map((server) =>
-        server.id !== nextServer.id && server.is_default ? { ...server, is_default: false } : server
-      )
-    : servers;
-
 const replaceUserServer = (servers: IMcpServer[], nextServer: IMcpServer) => {
-  const remainingServers = clearOtherDefaults(servers, nextServer).filter(
-    (server) => server.builtin === true || server.id !== nextServer.id
-  );
+  const remainingServers = servers.filter((server) => server.builtin === true || server.id !== nextServer.id);
   const insertIndex = remainingServers.findIndex((server) => server.builtin === true);
 
   if (insertIndex === -1) {
@@ -75,15 +66,15 @@ export const useMcpServerCRUD = (
     async (serversData: Omit<IMcpServer, 'id' | 'created_at' | 'updated_at'>[]) => {
       try {
         const imported = await mcpService.importServers.invoke({
-          servers: serversData.map((server) => toBackendMcpPayload(server)),
+          servers: serversData.map((server) => ({ ...toBackendMcpPayload(server), enabled: server.enabled })),
         });
 
-        const finalServers: IMcpServer[] = [];
-        for (const importedServer of imported) {
-          const original = serversData.find((server) => server.name === importedServer.name);
-          const persisted = await persistEnabledState(importedServer, original?.enabled ?? false);
-          finalServers.push(mergeServerState(persisted, original));
-        }
+        const finalServers = imported.map((server) =>
+          mergeServerState(
+            server,
+            serversData.find((original) => original.name === server.name)
+          )
+        );
 
         await saveMcpServers((prevServers) => {
           let nextServers = prevServers.filter((server) => server.builtin === true);
@@ -108,7 +99,7 @@ export const useMcpServerCRUD = (
         return [];
       }
     },
-    [persistEnabledState, saveMcpServers, t]
+    [saveMcpServers, t]
   );
 
   const handleEditMcpServer = useCallback(
@@ -132,9 +123,7 @@ export const useMcpServerCRUD = (
           ...serverData,
         });
         await saveMcpServers((prevServers) =>
-          clearOtherDefaults(prevServers, nextServer).map((server) =>
-            server.id === editingMcpServer.id ? nextServer : server
-          )
+          prevServers.map((server) => (server.id === editingMcpServer.id ? nextServer : server))
         );
 
         Message.success(t('settings.mcpImportSuccess'));

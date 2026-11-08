@@ -13,7 +13,6 @@ type BackendMcpPayload = {
   original_json: string;
   builtin?: boolean;
   purpose?: IMcpServer['purpose'];
-  is_default?: boolean;
 };
 
 const isBuiltinServer = (server: IMcpServer) => server.builtin === true;
@@ -56,10 +55,7 @@ const normalizeTransportForBackend = (transport: IMcpServerTransport): BackendMc
 };
 
 export const toBackendMcpPayload = (
-  server: Pick<
-    IMcpServer,
-    'name' | 'description' | 'transport' | 'original_json' | 'builtin' | 'purpose' | 'is_default'
-  >
+  server: Pick<IMcpServer, 'name' | 'description' | 'transport' | 'original_json' | 'builtin' | 'purpose'>
 ): BackendMcpPayload => ({
   name: server.name,
   description: server.description,
@@ -67,7 +63,6 @@ export const toBackendMcpPayload = (
   original_json: server.original_json || '{}',
   builtin: Boolean(server.builtin),
   ...(server.purpose !== undefined && { purpose: server.purpose }),
-  ...(server.is_default !== undefined && { is_default: server.is_default }),
 });
 
 export const toSessionMcpServer = (server: Pick<IMcpServer, 'id' | 'name' | 'transport'>): ISessionMcpServer => ({

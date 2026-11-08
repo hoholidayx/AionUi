@@ -1219,15 +1219,15 @@ export const acpConversation = {
 // MCP Service — routed to /api/mcp/*
 // ---------------------------------------------------------------------------
 
-type McpServerConfig = Pick<
-  IMcpServer,
-  'name' | 'description' | 'transport' | 'original_json' | 'builtin' | 'purpose' | 'is_default'
->;
+type McpServerConfig = Pick<IMcpServer, 'name' | 'description' | 'transport' | 'original_json' | 'builtin' | 'purpose'>;
 
 export const mcpService = {
   listServers: httpGet<IMcpServer[], void>('/api/mcp/servers'),
   createServer: httpPost<IMcpServer, McpServerConfig>('/api/mcp/servers'),
-  importServers: httpPost<IMcpServer[], { servers: McpServerConfig[] }>('/api/mcp/servers/import'),
+  importServers: httpPost<IMcpServer[], { servers: Array<McpServerConfig & { enabled?: boolean }> }>(
+    '/api/mcp/servers/import'
+  ),
+  setDefaultImageBackend: httpPut<void, { server_id: string | null }>('/api/mcp/image-default'),
   updateServer: httpPut<
     IMcpServer,
     {
