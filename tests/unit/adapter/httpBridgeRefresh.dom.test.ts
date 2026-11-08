@@ -6,6 +6,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { httpRequest } from '@/common/adapter/httpBridge';
+import { fs } from '@/common/adapter/ipcBridge';
 
 type WindowWithPort = { __backendPort?: number };
 
@@ -83,6 +84,24 @@ describe('httpRequest 401 → refresh → replay (WebUI #4124 fix)', () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(fetchMock).not.toHaveBeenCalledWith('/api/auth/refresh', expect.anything());
+  });
+
+  it('replays a scoped image download with the refreshed WebUI session', async () => {
+    const path = '/api/conversations/conv%2Fone/async-images/image%2Fone';
+    const image = new Blob(['image'], { type: 'image/png' });
+    let requested = false;
+    const fetchMock = vi.fn(async (url: string) => {
+      if (url === '/api/auth/refresh') return { ok: true };
+      if (requested) return { ok: true, status: 200, blob: async () => image };
+      requested = true;
+      return errorResponse(401, {});
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(fs.getAsyncImage.invoke({ conversationId: 'conv/one', attachmentId: 'image/one' })).resolves.toBe(
+      image
+    );
+    expect(fetchMock.mock.calls.map((call) => call[0])).toEqual([path, '/api/auth/refresh', path]);
   });
 
   it('does not recurse when the refresh endpoint itself returns 401', async () => {

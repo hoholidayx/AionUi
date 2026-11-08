@@ -5,26 +5,31 @@
  */
 
 import type { IMessageAcpToolCall } from '@/common/chat/chatLib';
-import { getAcpImageFileName, getAcpImagePath } from '@/common/chat/acpToolCallOutput';
+import { getAcpAsyncImage, getAcpImageFileName, getAcpImagePath } from '@/common/chat/acpToolCallOutput';
 import FileChangesPanel from '@/renderer/components/base/FileChangesPanel';
 import LocalImageView from '@/renderer/components/media/LocalImageView';
 import { useDiffPreviewHandlers } from '@/renderer/hooks/file/useDiffPreviewHandlers';
 import { parseDiff } from '@/renderer/utils/file/diffUtils';
-import { downloadFileFromPath } from '@/renderer/utils/file/download';
+import { downloadAsyncImage, downloadFileFromPath } from '@/renderer/utils/file/download';
 import { Button, Card, Message, Tag, Tooltip } from '@arco-design/web-react';
 import { Download } from '@icon-park/react';
 import { createTwoFilesPatch } from 'diff';
-import React, { useCallback, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import MarkdownView from '@renderer/components/Markdown';
 
-const StatusTag: React.FC<{ status: string }> = ({ status }) => {
+const StatusTag: React.FC<{ status: string; asyncImage: boolean }> = ({ status, asyncImage }) => {
+  const { t } = useTranslation();
   const getTagProps = () => {
     switch (status) {
       case 'pending':
-        return { color: 'blue', text: 'Pending' };
+        return { color: 'blue', text: asyncImage ? t('tools.status.pending') : 'Pending' };
       case 'in_progress':
-        return { color: 'orange', text: 'In Progress' };
+        return { color: 'orange', text: asyncImage ? t('tools.status.executing') : 'In Progress' };
+      case 'completed':
+        return asyncImage ? { color: 'green', text: t('common.success') } : { color: 'gray', text: status };
+      case 'failed':
+        return asyncImage ? { color: 'red', text: t('common.failed') } : { color: 'gray', text: status };
       default:
         return { color: 'gray', text: status };
     }
@@ -101,31 +106,39 @@ const getKindDisplayName = (toolKind: string) => {
 
 const MessageAcpToolCall: React.FC<{ message: IMessageAcpToolCall }> = ({ message }) => {
   const { t } = useTranslation();
+  const [messageApi, messageContext] = Message.useMessage();
   const { content } = message;
   if (!content?.update) {
     return null;
   }
   const { update } = content;
   const { tool_call_id, kind, title, status, rawInput, content: diffContent } = update;
+  const asyncOutput = getAcpAsyncImage(update);
+  const attachmentId = asyncOutput?.attachment_id;
+  const asyncImage =
+    status === 'completed' && typeof attachmentId === 'string' && attachmentId && message.conversation_id
+      ? { conversationId: message.conversation_id, attachmentId }
+      : undefined;
   const hasOnlyDiffs =
+    !asyncOutput &&
     Array.isArray(diffContent) &&
     diffContent.length > 0 &&
     diffContent.every((contentItem) => contentItem.type === 'diff');
-  const imagePath = getAcpImagePath(update);
+  const imagePath = asyncOutput ? undefined : getAcpImagePath(update);
   const imageAlt = imagePath?.split(/[/\\]/).pop() || t('acp.image.generated_alt');
-  const [messageApi, messageContext] = Message.useMessage();
-  const handleDownloadImage = useCallback(
-    async (path: string) => {
-      try {
-        await downloadFileFromPath(path, getAcpImageFileName(path));
-        messageApi.success(t('acp.image.download_success'));
-      } catch (error) {
-        console.error('[MessageAcpToolCall] Failed to download image:', error);
-        messageApi.error(t('acp.image.download_error'));
+  const handleDownloadImage = async () => {
+    try {
+      if (asyncImage) {
+        await downloadAsyncImage(asyncImage, 'generated-image.png');
+      } else if (imagePath) {
+        await downloadFileFromPath(imagePath, getAcpImageFileName(imagePath));
       }
-    },
-    [messageApi, t]
-  );
+      messageApi.success(t('acp.image.download_success'));
+    } catch (error) {
+      console.error('[MessageAcpToolCall] Failed to download image:', error);
+      messageApi.error(t('acp.image.download_error'));
+    }
+  };
 
   if (hasOnlyDiffs) {
     return (
@@ -143,10 +156,12 @@ const MessageAcpToolCall: React.FC<{ message: IMessageAcpToolCall }> = ({ messag
       <div className='flex items-start gap-3'>
         <div className='flex-1 min-w-0'>
           <div className='flex items-center gap-2 mb-2'>
-            <span className='font-medium text-t-primary'>{title || getKindDisplayName(kind)}</span>
-            <StatusTag status={status} />
+            <span className='font-medium text-t-primary'>
+              {asyncOutput ? t('settings.mcpPurposeAsyncImage') : title || getKindDisplayName(kind)}
+            </span>
+            <StatusTag status={status} asyncImage={!!asyncOutput} />
           </div>
-          {rawInput && (
+          {!asyncOutput && rawInput && (
             <div className='text-sm'>
               {typeof rawInput === 'string' ? (
                 <MarkdownView>{`\`\`\`\n${rawInput}\n\`\`\``}</MarkdownView>
@@ -155,10 +170,11 @@ const MessageAcpToolCall: React.FC<{ message: IMessageAcpToolCall }> = ({ messag
               )}
             </div>
           )}
-          {imagePath && (
+          {(imagePath || asyncImage) && (
             <div className='group relative mt-3 overflow-hidden rounded border bg-1 p-2'>
               <LocalImageView
                 src={imagePath}
+                asyncImage={asyncImage}
                 alt={imageAlt}
                 className='max-w-full max-h-[520px] object-contain rounded'
               />
@@ -170,19 +186,22 @@ const MessageAcpToolCall: React.FC<{ message: IMessageAcpToolCall }> = ({ messag
                   size='mini'
                   shape='circle'
                   icon={<Download theme='outline' size='14' />}
-                  onClick={() => void handleDownloadImage(imagePath)}
+                  onClick={() => void handleDownloadImage()}
                 />
               </Tooltip>
             </div>
           )}
-          {diffContent && diffContent.length > 0 && (
+          {!asyncOutput && diffContent && diffContent.length > 0 && (
             <div>
               {diffContent.map((item, index) => (
                 <ContentView key={index} content={item} />
               ))}
             </div>
           )}
-          <div className='text-xs text-t-secondary mt-2'>Tool Call ID: {tool_call_id}</div>
+          {status === 'failed' && typeof asyncOutput?.error_code === 'string' && (
+            <div className='text-xs text-t-secondary mt-2'>{asyncOutput.error_code}</div>
+          )}
+          {!asyncOutput && <div className='text-xs text-t-secondary mt-2'>Tool Call ID: {tool_call_id}</div>}
         </div>
       </div>
     </Card>

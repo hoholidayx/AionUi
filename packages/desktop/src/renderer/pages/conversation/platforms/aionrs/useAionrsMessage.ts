@@ -5,6 +5,7 @@
  */
 
 import { ipcBridge } from '@/common';
+import { isAcpAsyncImageEvent } from '@/common/chat/acpToolCallOutput';
 import { isErrorTipMessage, transformMessage } from '@/common/chat/chatLib';
 import type { IResponseMessage } from '@/common/adapter/ipcBridge';
 import type { TChatConversation, TokenUsageData } from '@/common/config/storage';
@@ -205,6 +206,11 @@ export const useAionrsMessage = (
   useEffect(() => {
     return ipcBridge.conversation.responseStream.on((message) => {
       if (conversation_id !== message.conversation_id) {
+        return;
+      }
+
+      if (isAcpAsyncImageEvent(message)) {
+        mergeLiveMessage(transformMessage(message));
         return;
       }
 

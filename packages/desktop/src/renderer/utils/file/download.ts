@@ -6,6 +6,7 @@
 
 import { ipcBridge } from '@/common';
 import type { ChatFileRef } from '@/common/types/chatFile';
+import type { AsyncImageRef } from '@/common/types/platform/acpTypes';
 import { buildFileStreamUrl } from './fileUrls';
 import { base64ToBlob, BINARY_MIME_MAP } from './base64';
 
@@ -48,6 +49,11 @@ export async function downloadFileFromRef(file: ChatFileRef, file_name: string):
   const blob = await response.blob();
   if (blob.size === 0) throw new Error('File data is empty');
   triggerBlobDownload(blob, file_name);
+}
+
+export async function downloadAsyncImage(file: AsyncImageRef, fileName: string): Promise<void> {
+  const blob = await ipcBridge.fs.getAsyncImage.invoke(file);
+  triggerBlobDownload(blob, fileName);
 }
 
 /**

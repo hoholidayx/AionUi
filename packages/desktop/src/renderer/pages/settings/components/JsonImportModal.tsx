@@ -1,5 +1,5 @@
-import type { IMcpServer, IMcpServerTransport } from '@/common/config/storage';
-import { Alert, Button } from '@arco-design/web-react';
+import type { IMcpServer, IMcpServerTransport, McpServerPurpose } from '@/common/config/storage';
+import { Alert, Button, Checkbox, Select } from '@arco-design/web-react';
 import React, { useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import CodeMirror from '@uiw/react-codemirror';
@@ -136,6 +136,28 @@ const buildOriginalJson = (name: string, description: string | undefined, transp
   );
 };
 
+const parseEditableServer = (input: string): ParsedMcpJsonServer | undefined => {
+  try {
+    const config: unknown = JSON.parse(input);
+    const result = parseMcpJsonImport(config);
+    if (result.isValid && result.servers.length === 1) return result.servers[0];
+  } catch {
+    // The editor reports malformed JSON separately.
+  }
+  return undefined;
+};
+
+const withAsyncImageSettings = (server: ParsedMcpJsonServer, purpose: McpServerPurpose, isDefault: boolean): string =>
+  JSON.stringify(
+    {
+      mcpServers: {
+        [server.name]: { ...server.originalConfig, purpose, is_default: purpose === 'async_image' && isDefault },
+      },
+    },
+    null,
+    2
+  );
+
 const validateEditServerNames = (
   currentName: string,
   serverKeys: string[],
@@ -196,31 +218,16 @@ const JsonImportModal: React.FC<JsonImportModalProps> = ({ visible, server, onCa
   // 当编辑现有服务器时，预填充JSON数据
   React.useEffect(() => {
     if (visible && server) {
-      // 优先使用存储的original_json，如果没有则生成JSON配置
-      if (server.original_json) {
-        setJsonInput(server.original_json);
-      } else {
-        // 兼容没有original_json的旧数据，生成JSON配置
-        const serverConfig = {
-          mcpServers: {
-            [server.name]: {
-              description: server.description,
-              ...(server.transport.type === 'stdio'
-                ? {
-                    command: server.transport.command,
-                    args: server.transport.args || [],
-                    env: server.transport.env || {},
-                  }
-                : {
-                    type: server.transport.type,
-                    url: server.transport.url,
-                    ...(server.transport.headers && { headers: server.transport.headers }),
-                  }),
-            },
-          },
-        };
-        setJsonInput(JSON.stringify(serverConfig, null, 2));
-      }
+      const original = server.original_json || buildOriginalJson(server.name, server.description, server.transport);
+      const parsed = parseEditableServer(original);
+      // Another server may have become the default since this JSON was saved.
+      setJsonInput(
+        parsed &&
+          server.purpose !== undefined &&
+          (parsed.purpose !== server.purpose || parsed.is_default !== server.is_default)
+          ? withAsyncImageSettings(parsed, server.purpose, server.is_default === true)
+          : original
+      );
     } else if (visible && !server) {
       // 新建模式下清空JSON输入
       setJsonInput('');
@@ -251,11 +258,15 @@ const JsonImportModal: React.FC<JsonImportModalProps> = ({ visible, server, onCa
       description: parsedServer.description,
       enabled,
       transport,
+      ...(parsedServer.purpose !== undefined && { purpose: parsedServer.purpose }),
+      ...(parsedServer.is_default !== undefined && { is_default: parsedServer.is_default }),
       last_test_status: 'disconnected',
       tools: [],
       original_json: originalJson || buildOriginalJson(parsedServer.name, parsedServer.description, transport),
     };
   };
+
+  const editableServer = React.useMemo(() => parseEditableServer(jsonInput), [jsonInput]);
 
   const handleSubmit = async () => {
     if (submitting) {
@@ -333,6 +344,33 @@ const JsonImportModal: React.FC<JsonImportModalProps> = ({ visible, server, onCa
       style={{ width: 600 }}
     >
       <div className='space-y-12px'>
+        {editableServer?.transport.type === 'http' && (
+          <div className='flex flex-wrap items-center gap-12px'>
+            <span className='text-sm text-t-secondary'>{t('settings.mcpPurpose')}</span>
+            <Select
+              className='w-auto min-w-180px'
+              aria-label={t('settings.mcpPurpose')}
+              value={editableServer.purpose ?? 'general'}
+              options={[
+                { label: t('settings.mcpPurposeGeneral'), value: 'general' },
+                { label: t('settings.mcpPurposeAsyncImage'), value: 'async_image' },
+              ]}
+              onChange={(purpose: McpServerPurpose) => {
+                setJsonInput(withAsyncImageSettings(editableServer, purpose, editableServer.is_default === true));
+              }}
+            />
+            {editableServer.purpose === 'async_image' && (
+              <Checkbox
+                checked={editableServer.is_default === true}
+                onChange={(checked) => {
+                  setJsonInput(withAsyncImageSettings(editableServer, 'async_image', checked));
+                }}
+              >
+                {t('settings.mcpAsyncImageDefault')}
+              </Checkbox>
+            )}
+          </div>
+        )}
         <div>
           <div className='mb-2 text-sm text-t-secondary'>{t('settings.mcpImportPlaceholder')}</div>
           {!validation.isValid && jsonInput.trim() && (

@@ -4,7 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import type { AcpRawOutput, ToolCallUpdate } from '@/common/types/platform/acpTypes';
+import type { AcpRawOutput, AsyncImageOutput, ToolCallUpdate } from '@/common/types/platform/acpTypes';
+import type { IResponseMessage } from '@/common/adapter/ipcBridge';
 
 const INLINE_IMAGE_RESULT_LIMIT = 64 * 1024;
 const IMAGE_PATH_EXTENSION_RE = /\.(?:png|jpe?g|webp|gif)$/i;
@@ -84,3 +85,24 @@ export const getAcpImagePath = (update: ToolCallUpdate['update']): string | unde
 };
 
 export const getAcpImageFileName = (path: string): string => path.split(/[/\\]/).pop() || 'generated-image.png';
+
+export const getAcpAsyncImage = (update?: ToolCallUpdate['update']): AsyncImageOutput | undefined => {
+  const output = update?.raw_output?.async_image ?? update?.rawOutput?.async_image;
+  return output && typeof output === 'object' && !Array.isArray(output) ? output : undefined;
+};
+
+export const isAcpAsyncImageEvent = (message: Pick<IResponseMessage, 'type' | 'data'>): boolean =>
+  message.type === 'acp_tool_call' && !!getAcpAsyncImage((message.data as ToolCallUpdate | undefined)?.update);
+
+const ASYNC_IMAGE_PROGRESS = { pending: 0, in_progress: 1, completed: 2, failed: 2 };
+
+// A history fetch and a live frame can arrive in either order.
+export const isNewerAcpAsyncImageUpdate = (
+  next?: ToolCallUpdate['update'],
+  previous?: ToolCallUpdate['update']
+): boolean =>
+  !!next &&
+  !!previous &&
+  !!getAcpAsyncImage(next) &&
+  !!getAcpAsyncImage(previous) &&
+  ASYNC_IMAGE_PROGRESS[next.status] > ASYNC_IMAGE_PROGRESS[previous.status];

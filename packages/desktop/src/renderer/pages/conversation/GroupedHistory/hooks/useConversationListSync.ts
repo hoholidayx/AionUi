@@ -5,6 +5,7 @@
  */
 
 import { ipcBridge } from '@/common';
+import { isAcpAsyncImageEvent } from '@/common/chat/acpToolCallOutput';
 import type { TChatConversation } from '@/common/config/storage';
 import { addEventListener } from '@/renderer/utils/emitter';
 import { useCallback, useEffect, useSyncExternalStore } from 'react';
@@ -607,7 +608,7 @@ const initializeConversationListSyncStore = () => {
   });
   ipcBridge.conversation.responseStream.on((message) => {
     const conversation_id = message.conversation_id;
-    if (!conversation_id) {
+    if (!conversation_id || isAcpAsyncImageEvent(message)) {
       return;
     }
 

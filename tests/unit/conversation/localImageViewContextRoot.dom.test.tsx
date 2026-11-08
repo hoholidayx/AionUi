@@ -13,11 +13,12 @@
  */
 
 import React from 'react';
-import { cleanup, render, waitFor } from '@testing-library/react';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const hoisted = vi.hoisted(() => ({
   getImageBase64: vi.fn(() => Promise.resolve<string | null>(null)),
+  getAsyncImage: vi.fn(),
 }));
 
 vi.mock('@/common', () => ({
@@ -25,6 +26,7 @@ vi.mock('@/common', () => ({
   ipcBridge: {
     fs: {
       getImageBase64: { invoke: hoisted.getImageBase64 },
+      getAsyncImage: { invoke: hoisted.getAsyncImage },
     },
   },
 }));
@@ -35,6 +37,38 @@ import { ConversationProvider } from '@/renderer/hooks/context/ConversationConte
 afterEach(() => {
   cleanup();
   hoisted.getImageBase64.mockClear();
+  hoisted.getAsyncImage.mockReset();
+  vi.unstubAllGlobals();
+});
+
+it('reads an asynchronous attachment from the original conversation and releases its preview on unmount', async () => {
+  const image = new Blob(['image'], { type: 'image/png' });
+  const createObjectURL = vi.fn().mockReturnValue('blob:test-image');
+  const revokeObjectURL = vi.fn();
+  vi.stubGlobal(
+    'URL',
+    class extends URL {
+      static createObjectURL = createObjectURL;
+      static revokeObjectURL = revokeObjectURL;
+    }
+  );
+  hoisted.getAsyncImage.mockResolvedValueOnce(image);
+
+  const { unmount } = render(
+    <ConversationProvider value={{ conversation_id: 'another-conversation', workspace: '/workspace', type: 'aionrs' }}>
+      <LocalImageView asyncImage={{ conversationId: 'original-conversation', attachmentId: 'image-1' }} alt='demo' />
+    </ConversationProvider>
+  );
+  expect(await screen.findByRole('img', { name: 'demo' })).toHaveAttribute('src', 'blob:test-image');
+  expect(hoisted.getAsyncImage).toHaveBeenCalledWith({
+    conversationId: 'original-conversation',
+    attachmentId: 'image-1',
+  });
+  expect(hoisted.getImageBase64).not.toHaveBeenCalled();
+  expect(createObjectURL).toHaveBeenCalledWith(image);
+
+  unmount();
+  expect(revokeObjectURL).toHaveBeenCalledWith('blob:test-image');
 });
 
 const renderInConversation = (workspace: string | undefined, src: string) =>

@@ -54,6 +54,38 @@ describe('useAionrsMessage turn clock', () => {
     responseStreamHandlerRef.current = undefined;
   });
 
+  it('applies asynchronous image updates only to their conversation without starting a model turn', async () => {
+    vi.mocked(getConversationOrNull).mockResolvedValue(null);
+    const { result, rerender } = renderHook(({ id }) => useAionrsMessage(id), {
+      initialProps: { id: 'conv-2' },
+    });
+    await waitFor(() => expect(result.current.hasHydratedRunningState).toBe(true));
+
+    const update: IResponseMessage = {
+      type: 'acp_tool_call',
+      msg_id: 'async-image:job-1',
+      conversation_id: 'conv-1',
+      data: {
+        update: {
+          tool_call_id: 'async-image:job-1',
+          status: 'completed',
+          raw_output: { async_image: { attachment_id: 'job-1' } },
+        },
+      },
+    };
+    act(() => responseStreamHandlerRef.current?.(update));
+    expect(addOrUpdateMessageMock).not.toHaveBeenCalled();
+
+    rerender({ id: 'conv-1' });
+    await waitFor(() => expect(result.current.hasHydratedRunningState).toBe(true));
+    act(() => responseStreamHandlerRef.current?.(update));
+    expect(addOrUpdateMessageMock).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'async-image:job-1', conversation_id: 'conv-1', type: 'acp_tool_call' })
+    );
+    expect(result.current.running).toBe(false);
+    expect(result.current.turnStartedAtMs).toBeNull();
+  });
+
   it('preserves the turn start timestamp when switching away and back to a running conversation', async () => {
     vi.mocked(getConversationOrNull).mockResolvedValue(null);
 

@@ -1,5 +1,5 @@
 import type { IMcpServer } from '@/common/config/storage';
-import { Button, Dropdown, Menu, Popover, Tooltip } from '@arco-design/web-react';
+import { Button, Dropdown, Menu, Popover, Tag, Tooltip } from '@arco-design/web-react';
 import { Check, CloseSmall, Info, LoadingOne, Refresh, Write, DeleteFour, SettingOne, Login } from '@icon-park/react';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
@@ -169,6 +169,9 @@ const McpServerHeader: React.FC<McpServerHeaderProps> = ({
     <div className='flex items-center justify-between group'>
       <div className='flex items-center gap-2'>
         <span>{server.name}</span>
+        {server.purpose === 'async_image' && (
+          <Tag>{t(server.is_default ? 'settings.mcpAsyncImageDefaultLabel' : 'settings.mcpPurposeAsyncImage')}</Tag>
+        )}
         {statusPopoverContent ? (
           <Popover content={statusPopoverContent} trigger='hover' position='top'>
             <span className='flex items-center cursor-default'>{statusIcon}</span>

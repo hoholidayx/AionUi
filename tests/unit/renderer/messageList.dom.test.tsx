@@ -5,7 +5,7 @@
  */
 
 import React, { type PropsWithChildren } from 'react';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { IMessageAcpToolCall, IMessageText, IMessageToolGroup, TMessage } from '@/common/chat/chatLib';
 import type { MessageFileChangesProps } from '@/renderer/pages/conversation/Messages/MessageFileChanges';
@@ -13,6 +13,7 @@ import {
   MessageListLoadingProvider,
   MessageListProvider,
   MessagePaginationProvider,
+  useMergeLiveMessage,
   useUpdateMessageList,
 } from '@/renderer/pages/conversation/Messages/hooks';
 import MessageList from '@/renderer/pages/conversation/Messages/MessageList';
@@ -113,6 +114,7 @@ vi.mock('@/renderer/pages/conversation/Messages/acp/MessageAcpToolCall', () => (
     <div
       data-testid='acp-tool-call'
       data-message-id={message.id}
+      data-status={message.content.update.status}
       data-diff-count={message.content.update.content?.filter((item) => item.type === 'diff').length ?? 0}
     >
       acp_tool_call
@@ -248,6 +250,11 @@ function Wrapper({
 function ReplaceMessagesButton({ messages }: { messages: TMessage[] }): JSX.Element {
   const updateMessages = useUpdateMessageList();
   return <button onClick={() => updateMessages(messages)}>replace messages</button>;
+}
+
+function MergeMessagesButton({ messages }: { messages: TMessage[] }): JSX.Element {
+  const mergeMessage = useMergeLiveMessage();
+  return <button onClick={() => messages.forEach((message) => mergeMessage(message))}>merge messages</button>;
 }
 
 describe('MessageList', () => {
@@ -477,6 +484,26 @@ describe('MessageList', () => {
 
     expect(screen.getByTestId('tool-summary')).toHaveTextContent('acp-read-1');
     expect(screen.queryByTestId('acp-tool-call')).not.toBeInTheDocument();
+  });
+
+  it('keeps a single standalone image card through duplicate and older updates', async () => {
+    const id = 'async-image:job-1';
+    const pending = createAcpToolCall({ id, status: 'pending' });
+    pending.content.update.raw_output = { async_image: {} };
+    const completed = createAcpToolCall({ id });
+    completed.content.update.raw_output = { async_image: { attachment_id: 'job-1' } };
+
+    render(
+      <Wrapper messages={[pending]}>
+        <MessageList />
+        <MergeMessagesButton messages={[completed, completed, pending]} />
+      </Wrapper>
+    );
+    expect(screen.getByTestId('acp-tool-call')).toHaveAttribute('data-status', 'pending');
+    fireEvent.click(screen.getByText('merge messages'));
+    await waitFor(() => expect(screen.getByTestId('acp-tool-call')).toHaveAttribute('data-status', 'completed'));
+    expect(screen.getByTestId('acp-tool-call')).toHaveAttribute('data-message-id', id);
+    expect(screen.queryByTestId('tool-summary')).not.toBeInTheDocument();
   });
 
   it('keeps malformed ACP diffs in View Steps instead of showing misleading stats', () => {

@@ -1,15 +1,18 @@
-import type { IMcpServerTransport } from '@/common/config/storage';
+import type { IMcpServerTransport, McpServerPurpose } from '@/common/config/storage';
 
 export type McpJsonImportErrorKey =
   | 'settings.mcpJsonFormatError'
   | 'settings.mcpJsonBareServerError'
   | 'settings.mcpJsonUrlRequiredError'
-  | 'settings.mcpJsonStdioCommandRequiredError';
+  | 'settings.mcpJsonStdioCommandRequiredError'
+  | 'settings.mcpAsyncImageHttpRequired';
 
 export type ParsedMcpJsonServer = {
   name: string;
   description: string;
   transport: IMcpServerTransport;
+  purpose?: McpServerPurpose;
+  is_default?: boolean;
   originalConfig: Record<string, unknown>;
 };
 
@@ -108,7 +111,8 @@ const parseTransport = (
     return { isValid: false, errorKey: 'settings.mcpJsonUrlRequiredError' };
   }
 
-  const normalizedType = transportType === 'sse' || url.includes('/sse') ? 'sse' : 'http';
+  const inferredSse = transportType !== 'http' && transportType !== 'streamable_http' && url.includes('/sse');
+  const normalizedType = transportType === 'sse' || inferredSse ? 'sse' : 'http';
   return {
     isValid: true,
     transport: {
@@ -126,12 +130,27 @@ const parseServer = (
   const transportResult = parseTransport(config);
   if (transportResult.isValid === false) return transportResult;
 
+  const purpose = config.purpose === 'general' || config.purpose === 'async_image' ? config.purpose : undefined;
+  const isDefault = typeof config.is_default === 'boolean' ? config.is_default : undefined;
+  if (
+    (config.purpose !== undefined && purpose === undefined) ||
+    (config.is_default !== undefined && isDefault === undefined) ||
+    (isDefault === true && purpose !== 'async_image')
+  ) {
+    return { isValid: false, errorKey: 'settings.mcpJsonFormatError' };
+  }
+  if (purpose === 'async_image' && transportResult.transport.type !== 'http') {
+    return { isValid: false, errorKey: 'settings.mcpAsyncImageHttpRequired' };
+  }
+
   return {
     isValid: true,
     server: {
       name,
       description: stringOrUndefined(config.description) || IMPORTED_DESCRIPTION,
       transport: transportResult.transport,
+      ...(purpose !== undefined && { purpose }),
+      ...(isDefault !== undefined && { is_default: isDefault }),
       originalConfig: config,
     },
   };

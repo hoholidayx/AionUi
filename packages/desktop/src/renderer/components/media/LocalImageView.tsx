@@ -1,17 +1,21 @@
 import { ipcBridge } from '@/common';
 import { joinPath } from '@/common/chat/chatLib';
+import type { AsyncImageRef } from '@/common/types/platform/acpTypes';
 import { LoadingTwo } from '@icon-park/react';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useConversationContextSafe } from '@renderer/hooks/context/ConversationContext';
 import { iconColors } from '@/renderer/styles/colors';
 
 const LocalImageView: React.FC<{
-  src: string;
+  src?: string;
+  asyncImage?: AsyncImageRef;
   alt: string;
   className?: string;
-}> = ({ src, alt, className }) => {
+}> = ({ src = '', asyncImage, alt, className }) => {
   const [loading, setLoading] = useState(true);
   const [url, setUrl] = useState(src);
+  const conversationId = asyncImage?.conversationId;
+  const attachmentId = asyncImage?.attachmentId;
   // Resolve relative image paths (e.g. ![](./chart.png)) against the conversation
   // workspace = the agent cwd, and pass it as the fs sandbox workspace. Outside a
   // conversation (settings markdown) there is no workspace, so the src is sent
@@ -34,23 +38,32 @@ const LocalImageView: React.FC<{
   }, [src, root]);
 
   useEffect(() => {
+    let active = true;
+    let objectUrl: string | undefined;
     setLoading(true);
-    ipcBridge.fs.getImageBase64
-      .invoke({ path: absolutePath, workspace: root || undefined })
-      .then((base64) => {
-        if (base64) {
-          setUrl(base64);
-        }
-        setLoading(false);
+    setUrl(src);
+    const imageUrl =
+      conversationId && attachmentId
+        ? ipcBridge.fs.getAsyncImage.invoke({ conversationId, attachmentId }).then((blob) => {
+            if (active) objectUrl = URL.createObjectURL(blob);
+            return objectUrl;
+          })
+        : ipcBridge.fs.getImageBase64.invoke({ path: absolutePath, workspace: root || undefined });
+    void imageUrl
+      .then((result) => {
+        if (active && result) setUrl(result);
       })
       .catch((error) => {
-        console.error('[LocalImageView] Failed to load image:', {
-          path: absolutePath,
-          error,
-        });
-        setLoading(false);
+        if (active) console.error('[LocalImageView] Failed to load image:', error);
+      })
+      .finally(() => {
+        if (active) setLoading(false);
       });
-  }, [absolutePath]);
+    return () => {
+      active = false;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [absolutePath, root, src, conversationId, attachmentId]);
   if (loading)
     return (
       <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -65,7 +78,7 @@ const LocalImageView: React.FC<{
         <span>{alt}</span>
       </span>
     );
-  return <img src={url} alt={alt} className={className} />;
+  return url ? <img src={url} alt={alt} className={className} /> : <span>{alt}</span>;
 };
 
 export default LocalImageView;

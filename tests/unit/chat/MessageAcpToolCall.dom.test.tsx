@@ -8,22 +8,42 @@ import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { IMessageAcpToolCall } from '@/common/chat/chatLib';
+import type { AsyncImageRef } from '@/common/types/platform/acpTypes';
 import type { FileChangesPanelProps } from '@/renderer/components/base/FileChangesPanel';
 import MessageAcpToolCall from '@/renderer/pages/conversation/Messages/acp/MessageAcpToolCall';
 
 const mockDownloadFileFromPath = vi.fn().mockResolvedValue(undefined);
+const mockDownloadAsyncImage = vi.fn().mockResolvedValue(undefined);
 const mockMessageSuccess = vi.fn();
 const mockMessageError = vi.fn();
 
 vi.mock('@/renderer/components/media/LocalImageView', () => ({
   __esModule: true,
-  default: ({ src, alt, className }: { src: string; alt: string; className?: string }) => (
-    <img src={src} alt={alt} className={className} data-testid='local-image' />
+  default: ({
+    src,
+    asyncImage,
+    alt,
+    className,
+  }: {
+    src?: string;
+    asyncImage?: AsyncImageRef;
+    alt: string;
+    className?: string;
+  }) => (
+    <img
+      src={src}
+      alt={alt}
+      className={className}
+      data-testid='local-image'
+      data-conversation={asyncImage?.conversationId}
+      data-attachment={asyncImage?.attachmentId}
+    />
   ),
 }));
 
 vi.mock('@/renderer/utils/file/download', () => ({
   downloadFileFromPath: (...args: unknown[]) => mockDownloadFileFromPath(...args),
+  downloadAsyncImage: (...args: unknown[]) => mockDownloadAsyncImage(...args),
 }));
 
 vi.mock('react-i18next', () => ({
@@ -93,6 +113,7 @@ describe('MessageAcpToolCall image output', () => {
   beforeEach(() => {
     mockDownloadFileFromPath.mockReset();
     mockDownloadFileFromPath.mockResolvedValue(undefined);
+    mockDownloadAsyncImage.mockClear();
     mockMessageSuccess.mockClear();
     mockMessageError.mockClear();
   });
@@ -131,6 +152,56 @@ describe('MessageAcpToolCall image output', () => {
     const image = screen.getByTestId('local-image');
     expect(image).toHaveAttribute('src', '/Users/test/.codex/generated_images/session/ig_test_image.png');
     expect(image).toHaveAttribute('alt', 'ig_test_image.png');
+  });
+
+  it('updates a pending asynchronous card to an attachment scoped to its original conversation', async () => {
+    const { rerender } = render(
+      <MessageAcpToolCall
+        message={createMessage({ ...baseUpdate, status: 'pending', raw_output: { async_image: {} } })}
+      />
+    );
+
+    expect(screen.getByText('settings.mcpPurposeAsyncImage')).toBeInTheDocument();
+    expect(screen.getByText('tools.status.pending')).toBeInTheDocument();
+    expect(screen.queryByTestId('local-image')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'acp.image.download_aria' })).not.toBeInTheDocument();
+
+    rerender(
+      <MessageAcpToolCall
+        message={createMessage({ ...baseUpdate, raw_output: { async_image: { attachment_id: 'attachment-1' } } })}
+      />
+    );
+
+    const preview = screen.getByTestId('local-image');
+    expect(preview).not.toHaveAttribute('src');
+    expect(preview).toHaveAttribute('data-conversation', 'conv-1');
+    expect(preview).toHaveAttribute('data-attachment', 'attachment-1');
+    screen.getByRole('button', { name: 'acp.image.download_aria' }).click();
+    await waitFor(() =>
+      expect(mockDownloadAsyncImage).toHaveBeenCalledWith(
+        { conversationId: 'conv-1', attachmentId: 'attachment-1' },
+        'generated-image.png'
+      )
+    );
+    expect(mockDownloadFileFromPath).not.toHaveBeenCalled();
+  });
+
+  it('shows a generic failed card without an image or the provider output', () => {
+    render(
+      <MessageAcpToolCall
+        message={createMessage({
+          ...baseUpdate,
+          status: 'failed',
+          raw_output: { async_image: { error_code: 'provider_unavailable' } },
+          rawInput: { provider: 'private-provider' },
+        })}
+      />
+    );
+
+    expect(screen.getByText('common.failed')).toBeInTheDocument();
+    expect(screen.getByText('provider_unavailable')).toBeInTheDocument();
+    expect(screen.queryByText(/private-provider/)).not.toBeInTheDocument();
+    expect(screen.queryByTestId('local-image')).not.toBeInTheDocument();
   });
 
   it('downloads the image from rawOutput.image.path', () => {

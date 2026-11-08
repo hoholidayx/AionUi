@@ -128,4 +128,41 @@ describe('parseMcpJsonImport', () => {
       errorKey: 'settings.mcpJsonUrlRequiredError',
     });
   });
+
+  it('carries explicit image generation roles for multiple HTTP servers', () => {
+    expect(
+      parseMcpJsonImport({
+        mcpServers: {
+          primary: {
+            type: 'streamable_http',
+            url: 'https://example.com/mcp',
+            purpose: 'async_image',
+            is_default: true,
+          },
+          secondary: { type: 'http', url: 'https://example.org/sse', purpose: 'async_image' },
+          docs: { type: 'http', url: 'https://example.net/mcp' },
+        },
+      })
+    ).toMatchObject({
+      isValid: true,
+      servers: [
+        { name: 'primary', transport: { type: 'http' }, purpose: 'async_image', is_default: true },
+        { name: 'secondary', transport: { type: 'http' }, purpose: 'async_image' },
+        { name: 'docs', transport: { type: 'http' } },
+      ],
+    });
+  });
+
+  it('requires Streamable HTTP for asynchronous image generation', () => {
+    expect(
+      parseMcpJsonImport({ image: { type: 'sse', url: 'https://example.com/sse', purpose: 'async_image' } })
+    ).toEqual({ isValid: false, errorKey: 'settings.mcpAsyncImageHttpRequired' });
+  });
+
+  it('rejects defaults without the asynchronous image generation role', () => {
+    expect(parseMcpJsonImport({ docs: { url: 'https://example.com/mcp', is_default: true } })).toEqual({
+      isValid: false,
+      errorKey: 'settings.mcpJsonFormatError',
+    });
+  });
 });

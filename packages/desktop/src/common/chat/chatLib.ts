@@ -8,7 +8,12 @@ import type { AcpPermissionRequest, PlanUpdate, ToolCallUpdate } from '@/common/
 import type { AcpAvailableCommand } from '@/common/chat/slash/types';
 import type { IResponseMessage } from '../adapter/ipcBridge';
 import { uuid } from '../utils';
-import { sanitizeAcpToolCallContent, sanitizeAcpToolUpdate } from './acpToolCallOutput';
+import {
+  getAcpAsyncImage,
+  isNewerAcpAsyncImageUpdate,
+  sanitizeAcpToolCallContent,
+  sanitizeAcpToolUpdate,
+} from './acpToolCallOutput';
 
 export { sanitizeAcpToolCallContent } from './acpToolCallOutput';
 
@@ -344,14 +349,17 @@ export type IMessageAcpTerminalOutput = IMessage<'acp_terminal_output', AcpTermi
 export const mergeAcpToolCallContent = (
   existing: IMessageAcpToolCall['content'],
   incoming: IMessageAcpToolCall['content']
-): IMessageAcpToolCall['content'] => ({
-  ...existing,
-  ...incoming,
-  update: sanitizeAcpToolUpdate({
-    ...existing.update,
-    ...incoming.update,
-  }),
-});
+): IMessageAcpToolCall['content'] => {
+  if (isNewerAcpAsyncImageUpdate(existing.update, incoming.update)) return existing;
+  return {
+    ...existing,
+    ...incoming,
+    update: sanitizeAcpToolUpdate({
+      ...existing.update,
+      ...incoming.update,
+    }),
+  };
+};
 
 export const isTextContentReplacement = (content: IMessageText['content'] | undefined): boolean =>
   content?.replace === true;
@@ -856,14 +864,15 @@ const transformMessageInner = (message: IResponseMessage): TMessage | undefined 
       };
     }
     case 'acp_tool_call': {
+      const content = message.data as ToolCallUpdate;
       return {
-        id: uuid(),
+        id: getAcpAsyncImage(content?.update) ? message.msg_id : uuid(),
         type: 'acp_tool_call',
         msg_id: message.msg_id,
         position: 'left',
         conversation_id: message.conversation_id,
         created_at,
-        content: message.data as any,
+        content,
       };
     }
     case 'plan': {

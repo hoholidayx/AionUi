@@ -217,6 +217,29 @@ function sendHttpRequest(
   });
 }
 
+async function requestWithSession(
+  method: string,
+  path: string,
+  headers: Record<string, string>,
+  body?: unknown
+): Promise<Response> {
+  let response = await sendHttpRequest(method, path, headers, body);
+
+  // Expired access cookie → 401. Attempt one silent session refresh, then replay
+  // the original request — the WebUI half of the #4124 fix. refreshSession() is a
+  // no-op outside browser mode and single-flights concurrent 401s into one POST.
+  // The auth endpoints themselves are skipped to avoid recursion.
+  if (response.status === 401 && !isAuthEndpoint(path)) {
+    console.debug(`[httpBridge] ${method} ${path} → 401, attempting session refresh`);
+    const refreshed = await refreshSession();
+    if (refreshed) {
+      console.debug(`[httpBridge] session refreshed, replaying ${method} ${path}`);
+      response = await sendHttpRequest(method, path, headers, body);
+    }
+  }
+  return response;
+}
+
 export async function httpRequest<T>(
   method: string,
   path: string,
@@ -238,20 +261,7 @@ export async function httpRequest<T>(
     body !== undefined ? JSON.stringify(redactForLog(body)).slice(0, 500) : '(no body)'
   );
 
-  let response = await sendHttpRequest(method, path, headers, body);
-
-  // Expired access cookie → 401. Attempt one silent session refresh, then replay
-  // the original request — the WebUI half of the #4124 fix. refreshSession() is a
-  // no-op outside browser mode and single-flights concurrent 401s into one POST.
-  // The auth endpoints themselves are skipped to avoid recursion.
-  if (response.status === 401 && !isAuthEndpoint(path)) {
-    console.debug(`[httpBridge] ${method} ${path} → 401, attempting session refresh`);
-    const refreshed = await refreshSession();
-    if (refreshed) {
-      console.debug(`[httpBridge] session refreshed, replaying ${method} ${path}`);
-      response = await sendHttpRequest(method, path, headers, body);
-    }
-  }
+  const response = await requestWithSession(method, path, headers, body);
 
   if (!response.ok) {
     // Response body can only be consumed once — read as text, then try JSON
@@ -283,6 +293,15 @@ export async function httpRequest<T>(
     return json.data as T;
   }
   return json as T;
+}
+
+/** Fetch a binary attachment using the same session renewal as JSON requests. */
+export async function httpGetBlob(path: string): Promise<Blob> {
+  const response = await requestWithSession('GET', path, {});
+  if (!response.ok) {
+    throw new BackendHttpError({ method: 'GET', path, status: response.status, body: null });
+  }
+  return response.blob();
 }
 
 // ---------------------------------------------------------------------------

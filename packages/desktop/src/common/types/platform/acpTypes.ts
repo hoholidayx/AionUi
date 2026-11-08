@@ -129,9 +129,20 @@ export interface AcpImageOutput {
   source?: string;
 }
 
+export type AsyncImageRef = {
+  conversationId: string;
+  attachmentId: string;
+};
+
+export type AsyncImageOutput = {
+  attachment_id?: string;
+  error_code?: string;
+};
+
 export interface AcpRawOutput {
   saved_path?: string;
   image?: AcpImageOutput;
+  async_image?: AsyncImageOutput;
   result_omitted?: boolean;
   result_omitted_reason?: string;
   result_bytes?: number;

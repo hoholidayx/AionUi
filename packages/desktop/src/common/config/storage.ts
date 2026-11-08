@@ -624,6 +624,8 @@ export type IMcpServerTransport =
   | IMcpServerTransportHTTP
   | IMcpServerTransportStreamableHTTP;
 
+export type McpServerPurpose = 'general' | 'async_image';
+
 export interface IMcpServer {
   id: string;
   name: string;
@@ -638,6 +640,8 @@ export interface IMcpServer {
   original_json: string; // 存储原始JSON配置，用于编辑时的准确显示
   /** Built-in MCP server managed by AionUi (hide edit/delete in UI) */
   builtin?: boolean;
+  purpose?: McpServerPurpose;
+  is_default?: boolean;
 }
 
 export type ISessionMcpServer = Pick<IMcpServer, 'id' | 'name' | 'transport'>;

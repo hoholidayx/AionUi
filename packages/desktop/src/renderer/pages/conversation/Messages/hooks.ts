@@ -5,6 +5,7 @@
  */
 
 import { ipcBridge } from '@/common';
+import { isNewerAcpAsyncImageUpdate } from '@/common/chat/acpToolCallOutput';
 import type { AgentStreamErrorInfo, IMessageText, IMessageTips, TMessage } from '@/common/chat/chatLib';
 import {
   composeMessage,
@@ -790,6 +791,13 @@ const getMessageMergeKey = (message: TMessage): string => {
 const preferPersistedOrLiveMessage = (persisted: TMessage, live: TMessage): TMessage => {
   if (persisted.type === 'text' && live.type === 'text') {
     return preferTextMessageVersion(persisted, live);
+  }
+  if (
+    persisted.type === 'acp_tool_call' &&
+    live.type === 'acp_tool_call' &&
+    isNewerAcpAsyncImageUpdate(live.content?.update, persisted.content?.update)
+  ) {
+    return live;
   }
   return persisted;
 };

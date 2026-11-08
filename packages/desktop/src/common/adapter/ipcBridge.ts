@@ -36,6 +36,7 @@ import type {
   UpdateAssistantRequest,
 } from '../types/agent/assistantTypes';
 import type {
+  AsyncImageRef,
   EnsureConversationRuntimeResponse,
   GetConfigOptionsResponse,
   SetConfigOptionRequest,
@@ -108,6 +109,7 @@ import {
 import {
   httpDelete,
   httpGet,
+  httpGetBlob,
   httpPatch,
   httpPost,
   httpPut,
@@ -869,6 +871,16 @@ export const fs = {
     fromBackendWorkspaceFlatFiles
   ),
   getImageBase64: httpPost<string | null, { path: string; workspace?: string }>('/api/fs/image-base64'),
+  getAsyncImage: {
+    provider: () => {},
+    invoke: async ({ conversationId, attachmentId }: AsyncImageRef): Promise<Blob> => {
+      const blob = await httpGetBlob(
+        `/api/conversations/${encodeURIComponent(conversationId)}/async-images/${encodeURIComponent(attachmentId)}`
+      );
+      if (blob.type !== 'image/png' || blob.size === 0) throw new Error('Invalid generated image');
+      return blob;
+    },
+  },
   fetchRemoteImage: httpPost<string, { url: string }>('/api/fs/fetch-remote-image'),
   readFile: httpPost<string | null, { path: string; workspace?: string }>('/api/fs/read'),
   writeFile: httpPost<boolean, { path: string; data: string; workspace?: string }>('/api/fs/write'),
@@ -1201,21 +1213,20 @@ export const acpConversation = {
 // MCP Service — routed to /api/mcp/*
 // ---------------------------------------------------------------------------
 
+type McpServerConfig = Pick<
+  IMcpServer,
+  'name' | 'description' | 'transport' | 'original_json' | 'builtin' | 'purpose' | 'is_default'
+>;
+
 export const mcpService = {
   listServers: httpGet<IMcpServer[], void>('/api/mcp/servers'),
-  createServer: httpPost<
-    IMcpServer,
-    Pick<IMcpServer, 'name' | 'description' | 'transport' | 'original_json' | 'builtin'>
-  >('/api/mcp/servers'),
-  importServers: httpPost<
-    IMcpServer[],
-    { servers: Array<Pick<IMcpServer, 'name' | 'description' | 'transport' | 'original_json' | 'builtin'>> }
-  >('/api/mcp/servers/import'),
+  createServer: httpPost<IMcpServer, McpServerConfig>('/api/mcp/servers'),
+  importServers: httpPost<IMcpServer[], { servers: McpServerConfig[] }>('/api/mcp/servers/import'),
   updateServer: httpPut<
     IMcpServer,
     {
       id: string;
-      data: Partial<Pick<IMcpServer, 'name' | 'description' | 'transport' | 'original_json' | 'builtin'>>;
+      data: Partial<McpServerConfig>;
     }
   >(
     (p) => `/api/mcp/servers/${p.id}`,

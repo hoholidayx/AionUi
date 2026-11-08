@@ -14,8 +14,17 @@ const mergeServerState = (persisted: IMcpServer, fallback?: Partial<IMcpServer>)
   original_json: fallback?.original_json ?? persisted.original_json,
 });
 
+const clearOtherDefaults = (servers: IMcpServer[], nextServer: IMcpServer) =>
+  nextServer.is_default
+    ? servers.map((server) =>
+        server.id !== nextServer.id && server.is_default ? { ...server, is_default: false } : server
+      )
+    : servers;
+
 const replaceUserServer = (servers: IMcpServer[], nextServer: IMcpServer) => {
-  const remainingServers = servers.filter((server) => server.builtin === true || server.id !== nextServer.id);
+  const remainingServers = clearOtherDefaults(servers, nextServer).filter(
+    (server) => server.builtin === true || server.id !== nextServer.id
+  );
   const insertIndex = remainingServers.findIndex((server) => server.builtin === true);
 
   if (insertIndex === -1) {
@@ -123,7 +132,9 @@ export const useMcpServerCRUD = (
           ...serverData,
         });
         await saveMcpServers((prevServers) =>
-          prevServers.map((server) => (server.id === editingMcpServer.id ? nextServer : server))
+          clearOtherDefaults(prevServers, nextServer).map((server) =>
+            server.id === editingMcpServer.id ? nextServer : server
+          )
         );
 
         Message.success(t('settings.mcpImportSuccess'));

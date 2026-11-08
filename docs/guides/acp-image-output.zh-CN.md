@@ -1,6 +1,6 @@
 # ACP 图片输出展示
 
-AionUi 对 ACP 工具调用中的图片结果使用文件路径展示，不依赖 inline base64。
+AionUi 对 ACP 工具调用中的图片结果使用文件路径或会话附件引用按需展示。
 
 ## 数据约定
 
@@ -35,3 +35,47 @@ MB 级 base64。
 - `acpToolCallOutput.test.ts` 覆盖图片路径提取、文件名生成和 base64 清洗。
 - `messageHooks.dom.test.tsx` 覆盖空列表、非空列表和 `add=true` 路径下的 ACP 图片消息清洗。
 - `MessageAcpToolCall.dom.test.tsx` 与 `MessageToolGroupSummary.dom.test.tsx` 覆盖图片预览、下载成功调用和下载失败提示。
+
+## 接入异步生图 MCP
+
+在 Aion 的「设置 → 工具 → MCP」导入 Streamable HTTP 配置。将用途设为「异步生图」，按需勾选「设为默认生图服务」。也可以直接导入包含用途的 JSON。
+
+```json
+{
+  "mcpServers": {
+    "image-backend": {
+      "type": "streamable_http",
+      "url": "https://example.com/mcp",
+      "purpose": "async_image",
+      "is_default": true
+    }
+  }
+}
+```
+
+在原生 Aion 会话中启用或选择该服务。可同时选多个异步生图服务，默认项用于会话选中的服务之间的路由。只选一个时可以省略默认项。服务可以只提供异步生图，也可以同时提供通用工具。
+
+Aion 向模型提供 `image_generate_async`。工具先返回任务回执和供后续编辑使用的附件引用。后台完成后更新原会话中的独立图片卡片，预览和下载都需要原会话的访问权限。
+
+### 后端接入约定
+
+一个 MCP 服务可以聚合多个实现，也可以把实现拆到不同机器上的独立 MCP 服务。Aion 按服务 ID 选路，依次使用显式选择、第一张仍可选的历史参考图所属服务、会话中的默认服务、唯一可用服务。多个服务均可用且没有命中时，需要显式选择。
+
+`image_jobs_v1` 通过 MCP Streamable HTTP 提供以下三个工具。
+
+| 工具           | 请求                                                                     | 回执                                                                                                 |
+| -------------- | ------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------- |
+| `image_submit` | `request_id`、`prompt`，可选 `size`、`preset`、按顺序排列的 PNG `images` | `structuredContent` 中返回同一 UUID 作为 `task_id` 和当前 `state`。相同 UUID 和参数须返回同一任务。  |
+| `image_status` | `task_id`                                                                | `structuredContent` 中返回 `task_id`、`state`，失败时可带 `error_code`。                             |
+| `image_result` | `task_id`                                                                | `structuredContent` 中返回 `task_id`、`width`、`height`、`sha256`，同时返回一个 `image/png` 内容块。 |
+
+参考图以有序 base64 PNG 字符串传入。任务应能用同一 UUID 跨 MCP 连接查询，以便 Aion 重启后继续查图。
+
+### 待真实验收
+
+Ubuntu 启动并确认服务健康后，在 Aion 导入真实 MCP 地址并测试连接，再用合成提示词验收。
+
+1. 在会话 A 提交一张图片，收到排队卡片后切换到会话 B。完成后返回 A，确认图片和下载都可用，B 没有收到卡片。
+2. 在任务排队后重启 Aion 服务。确认 Aion 恢复查询，并将结果写回原任务卡片。
+3. 对同一任务重复读取结果，再重连或重新加载原会话，确认始终只有一张卡片。用回执里的附件引用发起编辑，确认可以引用原图。
+4. 如果有第二个可用的异步生图服务，再验证显式选择、参考图来源和默认项的路由顺序。
