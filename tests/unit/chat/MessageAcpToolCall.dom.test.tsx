@@ -188,20 +188,24 @@ describe('MessageAcpToolCall image output', () => {
     expect(mockDownloadFileFromPath).not.toHaveBeenCalled();
   });
 
-  it('shows a translated failed card without an image or backend details', () => {
+  it.each([
+    ['provider_quota', 'providerQuota'],
+    ['raw-private-provider-error', 'unknown'],
+  ])('shows a translated failed card for %s without exposing backend details', (errorCode, reasonKey) => {
     render(
       <MessageAcpToolCall
         message={createMessage({
           ...asyncImageUpdate,
           status: 'failed',
-          raw_output: { async_image: { error_code: 'provider_unavailable' } },
+          raw_output: { async_image: { error_code: errorCode } },
           rawInput: { provider: 'private-provider' },
         })}
       />
     );
 
     expect(screen.getByText('common.failed')).toBeInTheDocument();
-    expect(screen.queryByText('provider_unavailable')).not.toBeInTheDocument();
+    expect(screen.getByText(`acp.image.asyncFailure.${reasonKey}`)).toBeInTheDocument();
+    expect(screen.queryByText(errorCode)).not.toBeInTheDocument();
     expect(screen.queryByText(/private-provider/)).not.toBeInTheDocument();
     expect(screen.queryByTestId('local-image')).not.toBeInTheDocument();
   });

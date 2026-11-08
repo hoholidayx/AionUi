@@ -3,6 +3,7 @@ import { joinPath } from '@/common/chat/chatLib';
 import type { AsyncImageRef } from '@/common/types/platform/acpTypes';
 import { LoadingTwo } from '@icon-park/react';
 import React, { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useConversationContextSafe } from '@renderer/hooks/context/ConversationContext';
 import { iconColors } from '@/renderer/styles/colors';
 
@@ -12,6 +13,7 @@ const LocalImageView: React.FC<{
   alt: string;
   className?: string;
 }> = ({ src = '', asyncImage, alt, className }) => {
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [url, setUrl] = useState(src);
   const conversationId = asyncImage?.conversationId;
@@ -78,7 +80,11 @@ const LocalImageView: React.FC<{
         <span>{alt}</span>
       </span>
     );
-  return url ? <img src={url} alt={alt} className={className} /> : <span>{alt}</span>;
+  return url ? (
+    <img src={url} alt={alt} className={className} />
+  ) : (
+    <span>{asyncImage ? t('acp.image.asyncFailure.outputUnavailable') : alt}</span>
+  );
 };
 
 export default LocalImageView;

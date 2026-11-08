@@ -7,7 +7,13 @@
 import React, { type PropsWithChildren } from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { IMessageAcpToolCall, IMessageText, IMessageToolGroup, TMessage } from '@/common/chat/chatLib';
+import type {
+  IMessageAcpToolCall,
+  IMessageText,
+  IMessageToolCall,
+  IMessageToolGroup,
+  TMessage,
+} from '@/common/chat/chatLib';
 import type { MessageFileChangesProps } from '@/renderer/pages/conversation/Messages/MessageFileChanges';
 import {
   MessageListLoadingProvider,
@@ -496,6 +502,27 @@ describe('MessageList', () => {
 
     expect(screen.getByTestId('tool-summary')).toHaveTextContent('mcp-tool-1');
     expect(screen.queryByTestId('acp-tool-call')).not.toBeInTheDocument();
+  });
+
+  it('shows a failed asynchronous image submission outside View Steps', () => {
+    const message: IMessageToolCall = {
+      ...createTextMessage(),
+      type: 'tool_call',
+      content: {
+        call_id: 'image-call-1',
+        name: 'image_generate_async',
+        args: {},
+        status: 'error',
+        output: JSON.stringify({ error_code: 'backend_required' }),
+      },
+    };
+
+    render(<MessageList />, {
+      wrapper: ({ children }) => <Wrapper messages={[message]}>{children}</Wrapper>,
+    });
+
+    expect(screen.getByTestId('acp-tool-call')).toHaveAttribute('data-status', 'failed');
+    expect(screen.queryByTestId('tool-summary')).not.toBeInTheDocument();
   });
 
   it('keeps a single standalone image card through duplicate and older updates', async () => {

@@ -6,6 +6,7 @@
 
 import type { AcpRawOutput, AsyncImageOutput, ToolCallUpdate } from '@/common/types/platform/acpTypes';
 import type { IResponseMessage } from '@/common/adapter/ipcBridge';
+import type { IMessageAcpToolCall, IMessageToolCall } from './chatLib';
 
 const INLINE_IMAGE_RESULT_LIMIT = 64 * 1024;
 const IMAGE_PATH_EXTENSION_RE = /\.(?:png|jpe?g|webp|gif)$/i;
@@ -91,6 +92,37 @@ export const getAcpAsyncImage = (update?: ToolCallUpdate['update']): AsyncImageO
 
   const output = update.raw_output?.async_image ?? update.rawOutput?.async_image;
   return output && typeof output === 'object' && !Array.isArray(output) ? output : undefined;
+};
+
+/** Projects pre-queue failures as standalone image cards, including older conversation rows. */
+export const getAsyncImageAdmissionFailure = (message: IMessageToolCall): IMessageAcpToolCall | undefined => {
+  if (message.content?.name !== 'image_generate_async' || message.content.status !== 'error') return undefined;
+
+  let errorCode: string | undefined;
+  try {
+    const output: unknown = JSON.parse(message.content.output ?? 'null');
+    if (output && typeof output === 'object' && 'error_code' in output && typeof output.error_code === 'string') {
+      errorCode = output.error_code;
+    }
+  } catch {
+    // Older tool failures can contain plain text. The card uses a safe fallback.
+  }
+
+  return {
+    ...message,
+    type: 'acp_tool_call',
+    content: {
+      session_id: message.conversation_id ?? '',
+      update: {
+        sessionUpdate: 'tool_call',
+        tool_call_id: `async-image:admission-${message.id}`,
+        status: 'failed',
+        title: '',
+        kind: 'execute',
+        raw_output: { async_image: { error_code: errorCode } },
+      },
+    },
+  };
 };
 
 export const isAcpAsyncImageEvent = (message: Pick<IResponseMessage, 'type' | 'data'>): boolean =>

@@ -5,7 +5,7 @@
  */
 
 import type { IConversationArtifact } from '@/common/adapter/ipcBridge';
-import { getAcpAsyncImage } from '@/common/chat/acpToolCallOutput';
+import { getAcpAsyncImage, getAsyncImageAdmissionFailure } from '@/common/chat/acpToolCallOutput';
 import type { IMessageAcpToolCall, IMessageToolCall, IMessageToolGroup, TMessage } from '@/common/chat/chatLib';
 import { useConversationContextSafe } from '@/renderer/hooks/context/ConversationContext';
 import { useConversationRuntimeView } from '@/renderer/pages/conversation/runtime/useConversationRuntimeView';
@@ -437,7 +437,9 @@ const MessageList: React.FC<{ className?: string; emptySlot?: React.ReactNode }>
         continue;
       }
       if (message.type === 'tool_call') {
-        pushToolList(message);
+        const imageFailure = getAsyncImageAdmissionFailure(message);
+        if (imageFailure) pushStandaloneMessage(imageFailure);
+        else pushToolList(message);
         continue;
       }
       pushStandaloneMessage(message);

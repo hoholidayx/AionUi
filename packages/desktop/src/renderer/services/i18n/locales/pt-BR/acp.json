@@ -27,6 +27,37 @@
     "download_aria": "Baixar imagem",
     "download_success": "Download concluído",
     "download_error": "Falha ao baixar",
-    "generated_alt": "Imagem gerada"
+    "generated_alt": "Imagem gerada",
+    "asyncFailure": {
+      "backendAuth": "O serviço de imagens rejeitou as credenciais de acesso.",
+      "backendChanged": "O serviço de imagens escolhido foi alterado ou removido após o envio.",
+      "backendRedirected": "O serviço de imagens redirecionou a solicitação para outro endereço.",
+      "backendRequired": "Escolha um serviço de imagens para esta conversa ou defina um padrão nas configurações.",
+      "backendUnavailable": "O serviço de imagens está indisponível ou não foi possível consultar o estado da tarefa.",
+      "conversationUnavailable": "A conversa original não está mais disponível.",
+      "editUnsupported": "O serviço de imagens escolhido não permite editar imagens de referência.",
+      "interruptedByRestart": "O serviço de imagens reiniciou antes que a tarefa terminasse.",
+      "invalidPrompt": "Digite uma instrução de imagem de até 8.000 caracteres.",
+      "invalidReference": "A imagem de referência está indisponível ou ultrapassa os limites de tamanho de PNG.",
+      "invalidSize": "O serviço de imagens não aceita as dimensões ou proporções solicitadas.",
+      "outputInvalid": "O serviço retornou uma imagem ou uma resposta inválida.",
+      "outputSourceDenied": "O endereço da imagem retornada não está entre as origens configuradas.",
+      "outputUnavailable": "Não foi possível recuperar a imagem gerada.",
+      "providerAuth": "O provedor rejeitou as credenciais da API ou negou o acesso.",
+      "providerModelUnavailable": "O modelo de imagens configurado não está disponível para esta conta.",
+      "providerPolicy": "O provedor rejeitou a solicitação de acordo com sua política de conteúdo.",
+      "providerQuota": "A conta do provedor não tem saldo ou cota suficiente.",
+      "providerRateLimited": "O limite de solicitações do provedor foi atingido.",
+      "providerRejected": "O provedor rejeitou a solicitação de imagem ou seus parâmetros.",
+      "queueFull": "A fila do serviço de imagens está cheia.",
+      "requestConflict": "O ID da solicitação já está associado a parâmetros diferentes.",
+      "resultExpired": "O resultado expirou antes que o Aion pudesse recuperá-lo.",
+      "storageUnavailable": "O Aion não conseguiu acessar o armazenamento de tarefas de imagem.",
+      "submissionUncertain": "O provedor não confirmou o envio. A imagem pode já ter sido gerada.",
+      "taskNotFound": "O serviço de imagens não encontrou esta tarefa.",
+      "unsupportedContract": "O serviço de imagens não suporta o protocolo de geração assíncrona.",
+      "unsupportedRequest": "O serviço de imagens rejeitou a solicitação ou seus dados.",
+      "unknown": "O serviço de imagens não informou um motivo de falha reconhecível."
+    }
   }
 }

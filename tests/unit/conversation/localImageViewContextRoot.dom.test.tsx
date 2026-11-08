@@ -21,6 +21,10 @@ const hoisted = vi.hoisted(() => ({
   getAsyncImage: vi.fn(),
 }));
 
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({ t: (key: string) => key }),
+}));
+
 vi.mock('@/common', () => ({
   __esModule: true,
   ipcBridge: {
@@ -69,6 +73,17 @@ it('reads an asynchronous attachment from the original conversation and releases
 
   unmount();
   expect(revokeObjectURL).toHaveBeenCalledWith('blob:test-image');
+});
+
+it('explains when the asynchronous image attachment is unavailable', async () => {
+  hoisted.getAsyncImage.mockResolvedValueOnce(null);
+
+  render(
+    <LocalImageView asyncImage={{ conversationId: 'original-conversation', attachmentId: 'image-1' }} alt='demo' />
+  );
+
+  expect(await screen.findByText('acp.image.asyncFailure.outputUnavailable')).toBeInTheDocument();
+  expect(screen.queryByRole('img')).not.toBeInTheDocument();
 });
 
 const renderInConversation = (workspace: string | undefined, src: string) =>

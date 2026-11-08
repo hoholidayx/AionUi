@@ -18,6 +18,50 @@ import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import MarkdownView from '@renderer/components/Markdown';
 
+const ASYNC_IMAGE_FAILURE_KEYS = {
+  attachment_not_found: 'invalidReference',
+  attachment_unavailable: 'invalidReference',
+  backend_auth: 'backendAuth',
+  backend_changed: 'backendChanged',
+  backend_redirected: 'backendRedirected',
+  backend_rejected: 'unsupportedRequest',
+  backend_required: 'backendRequired',
+  backend_status_unavailable: 'backendUnavailable',
+  backend_unavailable: 'backendUnavailable',
+  conversation_not_found: 'conversationUnavailable',
+  edit_unsupported: 'editUnsupported',
+  interrupted_by_restart: 'interruptedByRestart',
+  invalid_backend_result: 'outputInvalid',
+  invalid_prompt: 'invalidPrompt',
+  invalid_reference: 'invalidReference',
+  invalid_request: 'unsupportedRequest',
+  invalid_size: 'invalidSize',
+  output_invalid: 'outputInvalid',
+  output_source_denied: 'outputSourceDenied',
+  output_unavailable: 'outputUnavailable',
+  provider_auth: 'providerAuth',
+  provider_model_unavailable: 'providerModelUnavailable',
+  provider_policy: 'providerPolicy',
+  provider_quota: 'providerQuota',
+  provider_rate_limited: 'providerRateLimited',
+  provider_request_rejected: 'providerRejected',
+  queue_full: 'queueFull',
+  request_conflict: 'requestConflict',
+  result_expired: 'resultExpired',
+  result_not_ready: 'outputUnavailable',
+  storage_unavailable: 'storageUnavailable',
+  submission_uncertain: 'submissionUncertain',
+  task_not_found: 'taskNotFound',
+  unsupported_contract: 'unsupportedContract',
+  unsupported_input: 'unsupportedRequest',
+} as const;
+
+function getAsyncImageFailureKey(code?: string) {
+  return code && Object.hasOwn(ASYNC_IMAGE_FAILURE_KEYS, code)
+    ? ASYNC_IMAGE_FAILURE_KEYS[code as keyof typeof ASYNC_IMAGE_FAILURE_KEYS]
+    : 'unknown';
+}
+
 const StatusTag: React.FC<{ status: string; asyncImage: boolean }> = ({ status, asyncImage }) => {
   const { t } = useTranslation();
   const getTagProps = () => {
@@ -161,6 +205,11 @@ const MessageAcpToolCall: React.FC<{ message: IMessageAcpToolCall }> = ({ messag
             </span>
             <StatusTag status={status} asyncImage={!!asyncOutput} />
           </div>
+          {asyncOutput && status === 'failed' && (
+            <p className='mt-0 mb-2 text-sm text-t-secondary'>
+              {t(`acp.image.asyncFailure.${getAsyncImageFailureKey(asyncOutput.error_code)}`)}
+            </p>
+          )}
           {!asyncOutput && rawInput && (
             <div className='text-sm'>
               {typeof rawInput === 'string' ? (
