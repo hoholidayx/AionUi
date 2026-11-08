@@ -9,7 +9,6 @@ import { buildGuidSlashCommands } from '@/common/chat/slash/guidSlashCommands';
 import type { SlashCommandItem } from '@/common/chat/slash/types';
 import type { IMcpServer, TProviderWithModel } from '@/common/config/storage';
 import { resolveLocaleKey } from '@/common/utils';
-import type { AssistantDetail } from '@/common/types/agent/assistantTypes';
 
 import { useInputFocusRing } from '@/renderer/hooks/chat/useInputFocusRing';
 import { appendPromptToDraft } from '@/renderer/hooks/chat/useSendBoxDraft';
@@ -28,6 +27,7 @@ import { useGuidModelSelection } from './hooks/useGuidModelSelection';
 import { useGuidSend } from './hooks/useGuidSend';
 import { useTypewriterPlaceholder } from './hooks/useTypewriterPlaceholder';
 import { ensureBackendMcpCatalog } from '@/renderer/hooks/mcp/catalog';
+import { useImageBackends } from '@/renderer/hooks/mcp/useImageBackends';
 import ImageBackendSelector from '@/renderer/components/agent/ImageBackendSelector';
 import { resolveGuidAssistantDefaults } from './utils/assistantDefaults';
 import SpeechInputButton from '@/renderer/components/chat/SpeechInputButton';
@@ -40,7 +40,6 @@ import { Button, ConfigProvider } from '@arco-design/web-react';
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
-import useSWR from 'swr';
 import styles from './index.module.css';
 
 type GuidNavigationState = {
@@ -166,25 +165,24 @@ const GuidPage: React.FC = () => {
 
   const selectedAssistantId = agentSelection.selectedAssistantId;
   const hasSelectedAssistant = selectedAssistantId !== null;
-  const { data: selectedAssistantDetail } = useSWR(
-    selectedAssistantId ? `guid.assistant.detail.${selectedAssistantId}.${localeKey}` : null,
-    async (): Promise<AssistantDetail | null> =>
-      ipcBridge.assistants.get
-        .invoke({ id: selectedAssistantId!, locale: localeKey })
-        .catch((_error: unknown): AssistantDetail | null => null)
-  );
+  const {
+    assistant: selectedAssistantDetail,
+    backends: imageBackends,
+    resolved: imageBackendsResolved,
+  } = useImageBackends(selectedAssistantId, localeKey, agentSelection.selectedAssistantBackend === 'aionrs');
   const resolvedAssistantDefaults = useMemo(
     () => resolveGuidAssistantDefaults(selectedAssistantDetail),
     [selectedAssistantDetail]
   );
-  const allowedImageBackends = selectedAssistantDetail?.defaults.async_image_backend_ids;
+  const selectedImageBackendId =
+    imageBackendSelection?.assistantId === selectedAssistantId ? imageBackendSelection.id : null;
+  const needsImageBackendSelection =
+    imageBackendsResolved &&
+    selectedImageBackendId !== null &&
+    imageBackends.length > 0 &&
+    !imageBackends.some((backend) => backend.id === selectedImageBackendId);
   const imageBackendId =
-    imageBackendSelection?.assistantId === selectedAssistantId &&
-    imageBackendSelection.id &&
-    selectedAssistantDetail?.defaults.async_image_enabled !== false &&
-    (allowedImageBackends?.includes(imageBackendSelection.id) ?? true)
-      ? imageBackendSelection.id
-      : null;
+    needsImageBackendSelection || (imageBackendsResolved && imageBackends.length === 0) ? null : selectedImageBackendId;
   const selectedSkillNames = useMemo(() => {
     const disabledBuiltinSkillSet = new Set(
       guidDisabledBuiltinSkills ?? resolvedAssistantDefaults.disabledBuiltinSkillIds
@@ -284,6 +282,7 @@ const GuidPage: React.FC = () => {
     availableMcpServers,
     selectedMcpServerIds: guidSelectedMcpServerIds,
     imageBackendId,
+    needsImageBackendSelection,
     assistantDefaultMcpIds: resolvedAssistantDefaults.mcpIds,
     isGoogleAuth: modelSelection.isGoogleAuth,
 
@@ -655,7 +654,7 @@ const GuidPage: React.FC = () => {
       imageBackendSelector={
         agentSelection.selectedAssistantBackend === 'aionrs' ? (
           <ImageBackendSelector
-            value={imageBackendId}
+            value={selectedImageBackendId}
             assistantId={selectedAssistantId}
             onChange={(id) => setImageBackendSelection({ assistantId: selectedAssistantId, id })}
             disabled={guidInput.loading}

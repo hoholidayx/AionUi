@@ -32,6 +32,10 @@ vi.mock('swr', () => ({
   mutate: (...args: unknown[]) => swrMutateMock(...args),
 }));
 
+vi.mock('@/renderer/hooks/context/AuthContext', () => ({
+  useAuth: () => ({ user: { id: 'guid-owner' }, status: 'authenticated' }),
+}));
+
 vi.mock('@/renderer/utils/workspace/workspaceHistory', () => ({
   updateWorkspaceTime: vi.fn(),
 }));
@@ -98,6 +102,20 @@ describe('useGuidSend', () => {
     }
   );
 
+  it('preserves the draft until an unavailable image backend is replaced', async () => {
+    const deps = { ...createDeps(), selectedAssistantBackend: 'aionrs', needsImageBackendSelection: true };
+    const { result } = renderHook(() => useGuidSend(deps));
+    expect(result.current.isButtonDisabled).toBe(true);
+
+    await act(async () => {
+      result.current.sendMessageHandler();
+      await result.current.handleSend();
+    });
+
+    expect(createConversationInvokeMock).not.toHaveBeenCalled();
+    expect(deps.setInput).not.toHaveBeenCalled();
+  });
+
   it('passes selected mode into assistant conversation overrides when creating a preset ACP conversation', async () => {
     const deps = createDeps();
     (deps as any).selectedThoughtLevelValue = 'high';
@@ -124,7 +142,7 @@ describe('useGuidSend', () => {
     expect(payload.extra.session_mode).toBeUndefined();
     expect(payload.extra.current_model_id).toBeUndefined();
     expect(payload.extra.preset_assistant_id).toBeUndefined();
-    expect(swrMutateMock).toHaveBeenCalledWith('guid.assistant.detail.assistant-1.zh-CN');
+    expect(swrMutateMock).toHaveBeenCalledWith(['assistant.detail', 'guid-owner', 'assistant-1', 'zh-CN']);
     expect(swrMutateMock).toHaveBeenCalledWith('assistants.list');
   });
 

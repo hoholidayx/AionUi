@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { LayoutContext } from '@/renderer/hooks/context/LayoutContext';
@@ -145,8 +145,13 @@ vi.mock('@/common', () => ({
   },
 }));
 
-vi.mock('@/renderer/hooks/mcp/catalog', () => ({
+vi.mock('@/renderer/hooks/mcp/catalog', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/renderer/hooks/mcp/catalog')>()),
   ensureBackendMcpCatalog: vi.fn().mockResolvedValue({ allServers: [] }),
+}));
+
+vi.mock('@/renderer/hooks/context/AuthContext', () => ({
+  useAuth: () => ({ user: { id: 'owner' }, status: 'authenticated' }),
 }));
 
 vi.mock('@/renderer/hooks/chat/useInputFocusRing', () => ({
@@ -242,6 +247,8 @@ vi.mock('@/renderer/pages/guid/utils/assistantDefaults', () => ({
 const swrMock = vi.hoisted(() => ({
   useSWRMock: vi.fn(),
 }));
+
+const isAssistantDetailKey = (key: unknown) => Array.isArray(key) && key[0] === 'assistant.detail';
 
 const assistantDetailFixture = {
   prompts: {
@@ -495,8 +502,8 @@ describe('GuidPage', () => {
       },
     ];
 
-    swrMock.useSWRMock.mockImplementation((key: string | null) => {
-      if (key?.startsWith('guid.assistant.detail.')) {
+    swrMock.useSWRMock.mockImplementation((key: unknown) => {
+      if (isAssistantDetailKey(key)) {
         return {
           data: assistantDetailFixture,
         };
@@ -512,6 +519,57 @@ describe('GuidPage', () => {
 
     expect(promptButton.className).toContain('!whitespace-normal');
     expect(promptButton.className).toContain('!break-words');
+  });
+
+  it('keeps the unavailable draft choice visible while alternative backends remain', () => {
+    let availableBackends = [{ id: 'image-a', name: 'Image A', is_default: false }];
+    swrMock.useSWRMock.mockImplementation((key: unknown) => ({
+      data: isAssistantDetailKey(key) ? assistantDetailFixture : availableBackends,
+    }));
+    const { rerender } = render(<GuidPage />);
+
+    const picker = capturedGuidActionRowProps.at(-1)?.imageBackendSelector;
+    if (!React.isValidElement<{ onChange: (id: string) => void }>(picker)) throw new Error('Missing image picker');
+    act(() => picker.props.onChange('image-a'));
+    expect(capturedGuidSendDeps.at(-1)?.imageBackendId).toBe('image-a');
+
+    availableBackends = [{ id: 'image-b', name: 'Image B', is_default: true }];
+    rerender(<GuidPage />);
+    const updatedPicker = capturedGuidActionRowProps.at(-1)?.imageBackendSelector;
+    if (!React.isValidElement<{ value: string }>(updatedPicker)) throw new Error('Missing image picker');
+    expect(updatedPicker.props.value).toBe('image-a');
+    expect(capturedGuidSendDeps.at(-1)?.needsImageBackendSelection).toBe(true);
+  });
+
+  it('omits the previous draft backend when the assistant has no effective image backends', () => {
+    let availableBackends = [{ id: 'image-a', name: 'Image A', is_default: false }];
+    swrMock.useSWRMock.mockImplementation((key: unknown) => ({
+      data: isAssistantDetailKey(key) ? assistantDetailFixture : availableBackends,
+    }));
+    const { rerender } = render(<GuidPage />);
+    const picker = capturedGuidActionRowProps.at(-1)?.imageBackendSelector;
+    if (!React.isValidElement<{ onChange: (id: string) => void }>(picker)) throw new Error('Missing image picker');
+    act(() => picker.props.onChange('image-a'));
+    availableBackends = [];
+    rerender(<GuidPage />);
+    expect(capturedGuidSendDeps.at(-1)?.imageBackendId).toBeNull();
+    expect(capturedGuidSendDeps.at(-1)?.needsImageBackendSelection).toBe(false);
+  });
+
+  it('preserves the explicit draft backend while its availability is unresolved', () => {
+    let availableBackends: { id: string; name: string }[] | undefined = [{ id: 'image-a', name: 'Image A' }];
+    swrMock.useSWRMock.mockImplementation((key: unknown) => ({
+      data: isAssistantDetailKey(key) ? assistantDetailFixture : availableBackends,
+    }));
+    const { rerender } = render(<GuidPage />);
+    const picker = capturedGuidActionRowProps.at(-1)?.imageBackendSelector;
+    if (!React.isValidElement<{ onChange: (id: string) => void }>(picker)) throw new Error('Missing image picker');
+    act(() => picker.props.onChange('image-a'));
+
+    availableBackends = undefined;
+    rerender(<GuidPage />);
+    expect(capturedGuidSendDeps.at(-1)?.imageBackendId).toBe('image-a');
+    expect(capturedGuidSendDeps.at(-1)?.needsImageBackendSelection).toBe(false);
   });
 
   it('falls back to default instruction prompts when the selected assistant has no recommendations', () => {
@@ -559,7 +617,9 @@ describe('GuidPage', () => {
   });
 
   it('applies an aionrs assistant default model after provider models load', async () => {
-    swrMock.useSWRMock.mockReturnValue({ data: assistantDetailFixture });
+    swrMock.useSWRMock.mockImplementation((key: unknown) => ({
+      data: isAssistantDetailKey(key) ? assistantDetailFixture : null,
+    }));
     resolveGuidAssistantDefaultsMock.mockReturnValue({
       modelId: 'gpt-4.1',
       disabledBuiltinSkillIds: [],
@@ -595,7 +655,9 @@ describe('GuidPage', () => {
   });
 
   it('does not reapply assistant default model over a guid-page model selection', async () => {
-    swrMock.useSWRMock.mockReturnValue({ data: assistantDetailFixture });
+    swrMock.useSWRMock.mockImplementation((key: unknown) => ({
+      data: isAssistantDetailKey(key) ? assistantDetailFixture : null,
+    }));
     resolveGuidAssistantDefaultsMock.mockReturnValue({
       modelId: 'default',
       disabledBuiltinSkillIds: [],

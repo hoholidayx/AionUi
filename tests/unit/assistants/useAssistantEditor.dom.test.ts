@@ -45,6 +45,10 @@ vi.mock('swr', () => ({
   mutate: vi.fn(),
 }));
 
+vi.mock('@/renderer/hooks/context/AuthContext', () => ({
+  useAuth: () => ({ user: { id: 'editor-owner' }, status: 'authenticated' }),
+}));
+
 vi.mock('@/renderer/hooks/mcp/catalog', () => ({
   ensureBackendMcpCatalog: vi.fn(async () => ({
     userServers: [{ id: 'mcp-a', name: 'Server A', enabled: true }],
@@ -419,7 +423,7 @@ describe('useAssistantEditor', () => {
     expect(mockMessage.success).toHaveBeenCalled();
     expect(loadAssistantsMock).toHaveBeenCalled();
     expect(swrMutate).toHaveBeenCalledWith('assistants.list');
-    expect(swrMutate).toHaveBeenCalledWith('guid.assistant.detail.a1.en');
+    expect(swrMutate).toHaveBeenCalledWith(['assistant.detail', 'editor-owner', 'a1', 'en']);
   });
 
   it('persists a disabled asynchronous image setting for the edited assistant and reads it on reopening', async () => {
@@ -634,7 +638,7 @@ describe('useAssistantEditor', () => {
     expect(swrMutate).toHaveBeenNthCalledWith(1, 'assistants.list', expect.any(Function), { revalidate: false });
     expect(ipcBridge.assistants.setState.invoke).toHaveBeenCalledWith({ id: 'builtin-1', enabled: false });
     expect(loadAssistantsMock).toHaveBeenCalled();
-    expect(swrMutate).toHaveBeenCalledWith('guid.assistant.detail.builtin-1.en');
+    expect(swrMutate).toHaveBeenCalledWith(['assistant.detail', 'editor-owner', 'builtin-1', 'en']);
   });
 
   it('appends a re-enabled assistant to the shared enabled order', async () => {

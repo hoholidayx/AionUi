@@ -16,6 +16,8 @@ import { type TFunction } from 'i18next';
 import type { NavigateFunction } from 'react-router-dom';
 import { mutate as swrMutate } from 'swr';
 import { getConversationCreateErrorMessage } from '@/renderer/pages/conversation/utils/conversationCreateError';
+import { assistantDetailScope, refreshAssistantDetail } from '@/renderer/hooks/assistant/useAssistantDetail';
+import { useAuth } from '@/renderer/hooks/context/AuthContext';
 
 export type GuidSendDeps = {
   // Input state
@@ -43,6 +45,7 @@ export type GuidSendDeps = {
   availableMcpServers: IMcpServer[];
   selectedMcpServerIds: string[] | undefined;
   imageBackendId?: string | null;
+  needsImageBackendSelection?: boolean;
   assistantDefaultMcpIds?: string[];
   isGoogleAuth: boolean;
 
@@ -68,6 +71,7 @@ export type GuidSendResult = {
  * Hook that manages the send logic for ACP and Aion CLI conversations.
  */
 export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
+  const detailScope = assistantDetailScope(useAuth());
   const {
     input,
     setInput,
@@ -90,6 +94,7 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
     availableMcpServers,
     selectedMcpServerIds,
     imageBackendId,
+    needsImageBackendSelection,
     assistantDefaultMcpIds,
     setMentionOpen,
     setMentionQuery,
@@ -100,9 +105,10 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
     localeKey,
   } = deps;
   const sendingRef = useRef(false);
+  const isButtonDisabled = loading || !selectedAssistantId || needsImageBackendSelection === true;
 
   const handleSend = useCallback(async () => {
-    if (!selectedAssistantId) {
+    if (!selectedAssistantId || needsImageBackendSelection) {
       return;
     }
 
@@ -212,7 +218,7 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
 
         if (assistantConversationId) {
           await Promise.all([
-            swrMutate(`guid.assistant.detail.${assistantConversationId}.${localeKey}`),
+            refreshAssistantDetail(detailScope, assistantConversationId, localeKey),
             swrMutate('assistants.list'),
           ]);
         }
@@ -266,7 +272,7 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
 
       if (assistantConversationId) {
         await Promise.all([
-          swrMutate(`guid.assistant.detail.${assistantConversationId}.${localeKey}`),
+          refreshAssistantDetail(detailScope, assistantConversationId, localeKey),
           swrMutate('assistants.list'),
         ]);
       }
@@ -306,14 +312,16 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
     availableMcpServers,
     selectedMcpServerIds,
     imageBackendId,
+    needsImageBackendSelection,
     assistantDefaultMcpIds,
     navigate,
     t,
+    detailScope,
     localeKey,
   ]);
 
   const sendMessageHandler = useCallback(() => {
-    if (loading || sendingRef.current) return;
+    if (isButtonDisabled || sendingRef.current) return;
     sendingRef.current = true;
     setLoading(true);
     handleSend()
@@ -335,7 +343,7 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
         setLoading(false);
       });
   }, [
-    loading,
+    isButtonDisabled,
     handleSend,
     setLoading,
     setInput,
@@ -347,12 +355,6 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
     setDir,
     t,
   ]);
-
-  // Calculate button disabled state
-  // Calculate button disabled state. Empty input is allowed once an assistant is
-  // picked — that path creates an empty conversation ("start chat") rather than
-  // sending a message, so the gate only blocks while loading or with no assistant.
-  const isButtonDisabled = loading || !selectedAssistantId;
 
   return {
     handleSend,

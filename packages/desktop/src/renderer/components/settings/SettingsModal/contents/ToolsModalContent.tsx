@@ -27,6 +27,7 @@ import {
   useMcpOAuth,
   useMountedMessage,
 } from '@/renderer/hooks/mcp';
+import { isEnabledImageBackend } from '@/renderer/hooks/mcp/catalog';
 import {
   getClientBusinessSetting,
   removeClientBusinessSetting,
@@ -58,9 +59,7 @@ const ModalMcpManagementSection: React.FC<{
     () => mcpServers.filter((server) => !isBuiltinImageGenServer(server)),
     [mcpServers]
   );
-  const imageBackends = mcpServers.filter(
-    (server) => server.enabled && !server.builtin && server.purpose === 'async_image'
-  );
+  const imageBackends = mcpServers.filter(isEnabledImageBackend);
   const defaultImageBackend = imageBackends.find((server) => server.is_default)?.id ?? '';
   const [savingDefaultImageBackend, setSavingDefaultImageBackend] = useState(false);
 

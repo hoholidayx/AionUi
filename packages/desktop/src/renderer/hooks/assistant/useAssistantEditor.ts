@@ -9,6 +9,8 @@ import type {
   SkillInfo,
 } from '@/renderer/pages/settings/AssistantSettings/types';
 import { ensureBackendMcpCatalog } from '@/renderer/hooks/mcp/catalog';
+import { useAuth } from '@/renderer/hooks/context/AuthContext';
+import { assistantDetailScope, refreshAssistantDetail } from './useAssistantDetail';
 import { getSkillImportErrorMessage } from '@/renderer/pages/settings/SkillsSettings/skillImportMessages';
 import { emitter } from '@/renderer/utils/emitter';
 import { assistantOrderAfterToggle, selectableAssistants } from '@/renderer/utils/model/assistantSelection';
@@ -76,6 +78,7 @@ export const useAssistantEditor = ({
   message,
 }: UseAssistantEditorParams) => {
   const { t } = useTranslation();
+  const detailScope = assistantDetailScope(useAuth());
   const previousLocaleKeyRef = useRef(localeKey);
 
   const [editVisible, setEditVisible] = useState(false);
@@ -124,9 +127,9 @@ export const useAssistantEditor = ({
   const refreshAssistantDetailCaches = useCallback(
     async (assistantId: string | null | undefined) => {
       if (!assistantId) return;
-      await swrMutate(`guid.assistant.detail.${assistantId}.${localeKey}`);
+      await refreshAssistantDetail(detailScope, assistantId, localeKey);
     },
-    [localeKey]
+    [detailScope, localeKey]
   );
 
   const loadEditorResources = useCallback(

@@ -541,6 +541,25 @@ describe('usePresetAssistantInfo', () => {
       )
     ).toBe('assistant-modern');
   });
+
+  it('prefers the persisted assistant over legacy display hints', () => {
+    const legacy = makeConversation({
+      assistant_snapshot: { assistant_id: 'legacy-snapshot' },
+      assistant_id: 'legacy-id',
+      preset_assistant_id: 'legacy-preset',
+    });
+    expect(resolveAssistantConfigId(legacy)).toBe('legacy-snapshot');
+    expect(
+      resolveAssistantConfigId({
+        ...legacy,
+        assistant: { id: 'persisted', source: 'user', name: 'Assistant', avatar: '', backend: 'aionrs' },
+      })
+    ).toBe('persisted');
+  });
+
+  it('preserves the priority of a legacy assistant ID even when it is empty', () => {
+    expect(resolveAssistantConfigId(makeConversation({ assistant_id: '', preset_assistant_id: 'preset' }))).toBe('');
+  });
 });
 
 function makeConversation(extra: Record<string, unknown>): TChatConversation {

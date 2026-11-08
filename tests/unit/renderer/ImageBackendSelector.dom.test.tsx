@@ -5,44 +5,54 @@
  */
 
 import ImageBackendSelector from '@/renderer/components/agent/ImageBackendSelector';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { SWRConfig } from 'swr';
 import { describe, expect, it, vi } from 'vitest';
 
-const { listServers, getAssistant } = vi.hoisted(() => ({ listServers: vi.fn(), getAssistant: vi.fn() }));
+const { listServers, getAssistant, auth } = vi.hoisted(() => ({
+  listServers: vi.fn(),
+  getAssistant: vi.fn(),
+  auth: { user: { id: 'owner' } as { id: string } | null, status: 'authenticated' as 'authenticated' | 'checking' },
+}));
 
 vi.mock('@/common/adapter/ipcBridge', () => ({
   mcpService: { listServers: { invoke: listServers } },
   assistants: { get: { invoke: getAssistant } },
 }));
-vi.mock('@/renderer/hooks/context/AuthContext', () => ({ useAuth: () => ({ user: { id: 'owner' } }) }));
+vi.mock('@/renderer/hooks/context/AuthContext', () => ({ useAuth: () => auth }));
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string, options?: { name?: string }) => (options?.name ? `${key}: ${options.name}` : key),
   }),
 }));
 
-const renderSelector = (value: string | null, allowed?: string[]) => {
+const renderSelector = (value: string | null, allowed?: string[], defaultBackend = true) => {
+  auth.user = { id: 'owner' };
+  auth.status = 'authenticated';
   const onChange = vi.fn();
+  const transport = { type: 'http', url: 'https://example.com/mcp' };
   listServers.mockResolvedValue([
-    { id: 'image-a', name: 'Image A', purpose: 'async_image', enabled: true, is_default: true },
-    { id: 'image-b', name: 'Image B', purpose: 'async_image', enabled: true },
-    { id: 'disabled', name: 'Disabled', purpose: 'async_image', enabled: false },
-    { id: 'tools', name: 'General tools', purpose: 'general', enabled: true },
+    { id: 'image-a', name: 'Image A', purpose: 'async_image', enabled: true, is_default: defaultBackend, transport },
+    { id: 'image-b', name: 'Image B', purpose: 'async_image', enabled: true, transport },
+    { id: 'disabled', name: 'Disabled', purpose: 'async_image', enabled: false, transport },
+    { id: 'sse', name: 'SSE image', purpose: 'async_image', enabled: true, transport: { ...transport, type: 'sse' } },
+    { id: 'tools', name: 'General tools', purpose: 'general', enabled: true, transport },
   ]);
   getAssistant.mockResolvedValue({ defaults: { async_image_backend_ids: allowed } });
-  render(
-    <SWRConfig value={{ provider: () => new Map() }}>
+  const swrConfig = { provider: () => new Map() };
+  const view = () => (
+    <SWRConfig value={swrConfig}>
       <ImageBackendSelector value={value} assistantId={allowed && 'assistant-a'} onChange={onChange} />
     </SWRConfig>
   );
-  return onChange;
+  const rendered = render(view());
+  return { onChange, rerender: () => rendered.rerender(view()) };
 };
 
 describe('ImageBackendSelector', () => {
   it('offers enabled image backends and shows which one is the global default', async () => {
-    const onChange = renderSelector(null);
+    const { onChange } = renderSelector(null);
     fireEvent.click(await screen.findByText('mcp.imageBackend.defaultWithName: Image A'));
     fireEvent.click(await screen.findByText('Image B'));
     expect(onChange).toHaveBeenCalledWith('image-b');
@@ -51,7 +61,7 @@ describe('ImageBackendSelector', () => {
   });
 
   it('keeps an unavailable saved choice visible until the user returns to global default', async () => {
-    const onChange = renderSelector('deleted');
+    const { onChange } = renderSelector('deleted');
     fireEvent.click(await screen.findByText('mcp.imageBackend.unavailable'));
     fireEvent.click(await screen.findByText('mcp.imageBackend.defaultWithName: Image A'));
     expect(onChange).toHaveBeenCalledWith(null);
@@ -69,5 +79,45 @@ describe('ImageBackendSelector', () => {
     renderSelector('image-a', []);
     await vi.waitFor(() => expect(getAssistant).toHaveBeenCalled());
     expect(screen.queryByRole('combobox', { name: 'mcp.imageBackend.label' })).not.toBeInTheDocument();
+  });
+
+  it('requires an explicit HTTP backend when the account default is unset', async () => {
+    renderSelector(null, undefined, false);
+    fireEvent.click(await screen.findByRole('combobox', { name: 'mcp.imageBackend.label' }));
+    expect(await screen.findByText('Image A')).toBeVisible();
+    expect(screen.queryByText('mcp.imageBackend.default')).not.toBeInTheDocument();
+    expect(screen.queryByText('SSE image')).not.toBeInTheDocument();
+  });
+
+  it('does not reuse an earlier account’s image permissions for the same assistant ID', async () => {
+    const { rerender } = renderSelector('image-a', ['image-a']);
+    expect(await screen.findByText('Image A')).toBeVisible();
+
+    getAssistant.mockClear();
+    auth.user = null;
+    auth.status = 'checking';
+    rerender();
+    expect(getAssistant).not.toHaveBeenCalled();
+
+    let resolveNext!: (detail: { defaults: { async_image_backend_ids: string[] } }) => void;
+    getAssistant.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveNext = resolve;
+      })
+    );
+    auth.user = { id: 'next-owner' };
+    auth.status = 'authenticated';
+    rerender();
+    expect(screen.queryByText('Image A')).not.toBeInTheDocument();
+
+    await act(async () => resolveNext({ defaults: { async_image_backend_ids: ['image-b'] } }));
+    expect(await screen.findByText('mcp.imageBackend.unavailable')).toBeVisible();
+  });
+
+  it('loads assistant permissions for the authenticated desktop session', async () => {
+    const { rerender } = renderSelector('image-a', ['image-a']);
+    auth.user = null;
+    rerender();
+    expect(await screen.findByText('Image A')).toBeVisible();
   });
 });

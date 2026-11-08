@@ -39,12 +39,18 @@ export interface PresetAssistantInfo {
  */
 export function resolveAssistantConfigId(conversation: TChatConversation): string | null {
   const extra = conversation.extra as {
+    assistant_snapshot?: { assistant_id?: unknown };
     assistant_id?: unknown;
     preset_assistant_id?: unknown;
   };
-  const assistant_id = typeof extra?.assistant_id === 'string' ? extra.assistant_id.trim() : '';
-  const preset_assistant_id = typeof extra?.preset_assistant_id === 'string' ? extra.preset_assistant_id.trim() : '';
-  return assistant_id || preset_assistant_id || null;
+  return (
+    [
+      conversation.assistant?.id,
+      extra?.assistant_snapshot?.assistant_id,
+      extra?.assistant_id,
+      extra?.preset_assistant_id,
+    ].find((id): id is string => typeof id === 'string') ?? null
+  );
 }
 
 function collectExplicitAssistantIdentityCandidates(conversation: TChatConversation): string[] {
