@@ -450,6 +450,7 @@ export type TChatConversation =
       'aionrs',
       {
         workspace: string;
+        image_backend_id?: string | null;
         custom_workspace?: boolean;
         proxy?: string;
         /** System rules injected at initialization */

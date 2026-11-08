@@ -28,6 +28,7 @@ import { useGuidModelSelection } from './hooks/useGuidModelSelection';
 import { useGuidSend } from './hooks/useGuidSend';
 import { useTypewriterPlaceholder } from './hooks/useTypewriterPlaceholder';
 import { ensureBackendMcpCatalog } from '@/renderer/hooks/mcp/catalog';
+import ImageBackendSelector from '@/renderer/components/agent/ImageBackendSelector';
 import { resolveGuidAssistantDefaults } from './utils/assistantDefaults';
 import SpeechInputButton from '@/renderer/components/chat/SpeechInputButton';
 import { chatFileRefPath, uploadFileRef } from '@/common/types/chatFile';
@@ -81,6 +82,7 @@ const GuidPage: React.FC = () => {
   const [guidEnabledSkills, setGuidEnabledSkills] = useState<string[] | undefined>(undefined);
   const [availableMcpServers, setAvailableMcpServers] = useState<IMcpServer[]>([]);
   const [guidSelectedMcpServerIds, setGuidSelectedMcpServerIds] = useState<string[] | undefined>(undefined);
+  const [imageBackendId, setImageBackendId] = useState<string | null>(null);
 
   useEffect(() => {
     ipcBridge.fs.listAvailableSkills
@@ -270,6 +272,7 @@ const GuidPage: React.FC = () => {
     assistantDefaultDisabledBuiltinSkillIds: resolvedAssistantDefaults.disabledBuiltinSkillIds,
     availableMcpServers,
     selectedMcpServerIds: guidSelectedMcpServerIds,
+    imageBackendId,
     assistantDefaultMcpIds: resolvedAssistantDefaults.mcpIds,
     isGoogleAuth: modelSelection.isGoogleAuth,
 
@@ -638,6 +641,11 @@ const GuidPage: React.FC = () => {
       mcpServers={availableMcpServers}
       selectedMcpServerIds={guidSelectedMcpServerIds ?? []}
       onToggleMcpServer={handleToggleMcpServer}
+      imageBackendSelector={
+        agentSelection.selectedAssistantBackend === 'aionrs' ? (
+          <ImageBackendSelector value={imageBackendId} onChange={setImageBackendId} disabled={guidInput.loading} />
+        ) : undefined
+      }
       speechInputNode={
         <SpeechInputButton onLiveTranscript={handleLiveTranscript} onTranscript={handleSpeechTranscript} />
       }

@@ -4,6 +4,12 @@
     "description": "管理模型上下文協議伺服器和工具"
   },
   "label": "MCP",
+  "imageBackend": {
+    "label": "生圖後端",
+    "default": "使用全域預設",
+    "defaultWithName": "全域預設 · {{name}}",
+    "unavailable": "選取的生圖後端已無法使用"
+  },
   "servers": "伺服器",
   "tools": "工具",
   "executionHistory": "執行歷程",

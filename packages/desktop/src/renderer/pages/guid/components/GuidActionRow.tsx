@@ -109,6 +109,7 @@ type GuidActionRowProps = {
   mcpServers: IMcpServer[];
   selectedMcpServerIds: string[];
   onToggleMcpServer: (serverId: string) => void;
+  imageBackendSelector?: React.ReactNode;
 
   // Send button
   loading: boolean;
@@ -142,6 +143,7 @@ const GuidActionRow: React.FC<GuidActionRowProps> = ({
   mcpServers,
   selectedMcpServerIds,
   onToggleMcpServer,
+  imageBackendSelector,
   loading,
   isButtonDisabled,
   speechInputNode,
@@ -649,6 +651,7 @@ const GuidActionRow: React.FC<GuidActionRowProps> = ({
           </div>
         )}
 
+        {imageBackendSelector}
         {speechInputNode}
         <Button
           shape='circle'

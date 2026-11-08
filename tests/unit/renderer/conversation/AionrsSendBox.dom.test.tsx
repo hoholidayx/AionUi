@@ -10,6 +10,8 @@ import type { TeamSendBoxRuntime } from '@/renderer/pages/team/components/teamSe
 const {
   ensureConversationRuntimeMock,
   sendMessageInvokeMock,
+  updateConversationMock,
+  refreshConversationCacheMock,
   translateMock,
   useTeamPermissionMock,
   setSendBoxHandlerMock,
@@ -25,6 +27,8 @@ const {
 } = vi.hoisted(() => ({
   ensureConversationRuntimeMock: vi.fn().mockResolvedValue({ recovered: false, config_options: [], runtime: null }),
   sendMessageInvokeMock: vi.fn().mockResolvedValue(undefined),
+  updateConversationMock: vi.fn(),
+  refreshConversationCacheMock: vi.fn().mockResolvedValue(undefined),
   translateMock: (key: string, options?: { defaultValue?: string }) => options?.defaultValue ?? key,
   useTeamPermissionMock: vi.fn(),
   setSendBoxHandlerMock: vi.fn(),
@@ -44,6 +48,9 @@ vi.mock('@/common', () => ({
     conversation: {
       sendMessage: {
         invoke: sendMessageInvokeMock,
+      },
+      update: {
+        invoke: updateConversationMock,
       },
       stop: {
         invoke: vi.fn().mockResolvedValue(undefined),
@@ -123,6 +130,13 @@ vi.mock('@/renderer/components/chat/SendBox', () => ({
 }));
 
 vi.mock('@/renderer/components/agent/AgentModeSelector', () => ({ default: () => null }));
+vi.mock('@/renderer/components/agent/ImageBackendSelector', () => ({
+  default: ({ onChange }: { onChange: (id: string | null) => void }) => (
+    <button type='button' onClick={() => onChange(null)}>
+      Use global default
+    </button>
+  ),
+}));
 vi.mock('@/renderer/components/chat/CommandQueuePanel', () => ({ default: () => null }));
 vi.mock('@/renderer/components/chat/MobileActionSheet', () => ({
   default: () => null,
@@ -219,6 +233,7 @@ vi.mock('@/renderer/pages/conversation/runtime/useConversationRuntimeView', () =
   }),
 }));
 vi.mock('@/renderer/pages/conversation/utils/conversationCache', () => ({
+  refreshConversationCache: refreshConversationCacheMock,
   getConversationOrNull: vi.fn().mockResolvedValue({
     extra: {
       workspace: '/tmp/workspace',
@@ -309,6 +324,37 @@ describe('AionrsSendBox', () => {
     useTeamPermissionMock.mockReturnValue(null);
     draftContentRef.current = '';
     runtimeViewIsProcessingRef.current = false;
+  });
+
+  it('clears the stored backend and blocks sending until the conversation is refreshed', async () => {
+    let finishUpdate!: (updated: boolean) => void;
+    updateConversationMock.mockReturnValueOnce(
+      new Promise<boolean>((resolve) => {
+        finishUpdate = resolve;
+      })
+    );
+    render(<AionrsSendBox conversation_id='conv-1' modelSelection={modelSelection} imageBackendId='image-a' />);
+
+    act(() => screen.getByRole('button', { name: 'Use global default' }).click());
+    act(() => screen.getByRole('button', { name: 'send' }).click());
+
+    expect(updateConversationMock).toHaveBeenCalledWith({
+      id: 'conv-1',
+      updates: { extra: { image_backend_id: null } },
+    });
+    expect(sendMessageInvokeMock).not.toHaveBeenCalled();
+    await act(async () => finishUpdate(true));
+    await waitFor(() => expect(refreshConversationCacheMock).toHaveBeenCalledWith('conv-1'));
+  });
+
+  it('reports a rejected backend selection without refreshing the conversation', async () => {
+    updateConversationMock.mockRejectedValueOnce(new Error('Unavailable'));
+    render(<AionrsSendBox conversation_id='conv-1' modelSelection={modelSelection} imageBackendId='image-a' />);
+
+    act(() => screen.getByRole('button', { name: 'Use global default' }).click());
+
+    await waitFor(() => expect(Message.error).toHaveBeenCalledWith('common.saveFailed'));
+    expect(refreshConversationCacheMock).not.toHaveBeenCalled();
   });
 
   it('does not warm up team session when draft content changes', async () => {

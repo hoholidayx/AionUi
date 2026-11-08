@@ -4,6 +4,12 @@
     "description": "모델 컨텍스트 프로토콜 서버 및 도구 관리"
   },
   "label": "MCP",
+  "imageBackend": {
+    "label": "이미지 생성 백엔드",
+    "default": "전역 기본값 사용",
+    "defaultWithName": "전역 기본값 · {{name}}",
+    "unavailable": "선택한 이미지 생성 백엔드를 사용할 수 없음"
+  },
   "servers": "서버",
   "tools": "도구",
   "executionHistory": "실행 기록",

@@ -4,6 +4,12 @@
     "description": "管理模型上下文协议服务器和工具"
   },
   "label": "MCP",
+  "imageBackend": {
+    "label": "生图后端",
+    "default": "使用全局默认",
+    "defaultWithName": "全局默认 · {{name}}",
+    "unavailable": "选中的生图后端已不可用"
+  },
   "servers": "服务器",
   "tools": "工具",
   "executionHistory": "执行历史",

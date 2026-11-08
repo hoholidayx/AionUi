@@ -42,6 +42,7 @@ export type GuidSendDeps = {
   assistantDefaultDisabledBuiltinSkillIds?: string[];
   availableMcpServers: IMcpServer[];
   selectedMcpServerIds: string[] | undefined;
+  imageBackendId?: string | null;
   assistantDefaultMcpIds?: string[];
   isGoogleAuth: boolean;
 
@@ -88,6 +89,7 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
     assistantDefaultDisabledBuiltinSkillIds,
     availableMcpServers,
     selectedMcpServerIds,
+    imageBackendId,
     assistantDefaultMcpIds,
     setMentionOpen,
     setMentionQuery,
@@ -192,6 +194,7 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
             custom_workspace: isCustomWorkspace,
             selected_mcp_server_ids: selectedUserMcpServerIdsToSend,
             selected_session_mcp_servers: selectedSessionMcpServersToSend,
+            ...(imageBackendId && { image_backend_id: imageBackendId }),
           },
         });
 
@@ -299,6 +302,7 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
     assistantDefaultDisabledBuiltinSkillIds,
     availableMcpServers,
     selectedMcpServerIds,
+    imageBackendId,
     assistantDefaultMcpIds,
     navigate,
     t,

@@ -37,6 +37,7 @@ const AionrsChat: React.FC<{
   loadedSkills?: string[];
   loadedMcpServers?: string[];
   loadedMcpStatuses?: IConversationMcpStatus[];
+  imageBackendId?: string | null;
   agent_name?: string;
   teamSendMessage?: (payload: { input: string; files: ChatFileRef[] }) => Promise<void>;
   teamRuntime?: TeamSendBoxRuntime;
@@ -52,6 +53,7 @@ const AionrsChat: React.FC<{
   loadedSkills,
   loadedMcpServers,
   loadedMcpStatuses,
+  imageBackendId,
   agent_name,
   teamSendMessage,
   teamRuntime,
@@ -95,6 +97,7 @@ const AionrsChat: React.FC<{
           <AionrsSendBox
             conversation_id={conversation_id}
             modelSelection={modelSelection}
+            imageBackendId={imageBackendId}
             session_mode={session_mode}
             agent_name={agent_name}
             teamSendMessage={teamSendMessage}

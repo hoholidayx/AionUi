@@ -4,6 +4,12 @@
     "description": "Model Bağlam Protokolü sunucularını ve araçlarını yönet"
   },
   "label": "MCP",
+  "imageBackend": {
+    "label": "Görsel üretim arka ucu",
+    "default": "Genel varsayılanı kullan",
+    "defaultWithName": "Genel varsayılan · {{name}}",
+    "unavailable": "Seçilen görsel üretim arka ucu kullanılamıyor"
+  },
   "servers": "Sunucular",
   "tools": "Araçlar",
   "executionHistory": "Yürütme Geçmişi",

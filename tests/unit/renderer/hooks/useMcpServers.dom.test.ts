@@ -6,6 +6,7 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
+import useSWR from 'swr';
 
 const { ensureBackendMcpCatalogMock } = vi.hoisted(() => ({
   ensureBackendMcpCatalogMock: vi.fn(),
@@ -19,10 +20,12 @@ vi.mock('@/common', () => ({
   },
 }));
 
-vi.mock('@/renderer/hooks/mcp/catalog', () => ({
+vi.mock('@/renderer/hooks/mcp/catalog', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/renderer/hooks/mcp/catalog')>()),
   ensureBackendMcpCatalog: ensureBackendMcpCatalogMock,
 }));
 
+import { IMAGE_BACKEND_CATALOG_KEY } from '@/renderer/hooks/mcp/catalog';
 import { useMcpServers } from '@/renderer/hooks/mcp/useMcpServers';
 
 describe('useMcpServers', () => {
@@ -75,5 +78,18 @@ describe('useMcpServers', () => {
     });
 
     await waitFor(() => expect(result.current.mcpServers).toHaveLength(1));
+  });
+
+  it('refreshes the image backend catalog when settings saves a server', async () => {
+    const fetchImageBackends = vi.fn().mockResolvedValue([]);
+    const { result } = renderHook(() => {
+      useSWR([IMAGE_BACKEND_CATALOG_KEY, 'catalog-refresh-test'], fetchImageBackends);
+      return useMcpServers();
+    });
+    await waitFor(() => expect(fetchImageBackends).toHaveBeenCalledTimes(1));
+
+    await act(() => result.current.saveMcpServers([]));
+
+    await waitFor(() => expect(fetchImageBackends).toHaveBeenCalledTimes(2));
   });
 });

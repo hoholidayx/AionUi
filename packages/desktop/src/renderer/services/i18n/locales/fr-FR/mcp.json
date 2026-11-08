@@ -4,6 +4,12 @@
     "description": "Gérer les serveurs et outils du protocole Model Context Protocol"
   },
   "label": "PCM",
+  "imageBackend": {
+    "label": "Service de génération d’images",
+    "default": "Utiliser le réglage global",
+    "defaultWithName": "Réglage global · {{name}}",
+    "unavailable": "Le service de génération d’images sélectionné est indisponible"
+  },
   "servers": "Serveurs",
   "tools": "Outils",
   "executionHistory": "Historique d'exécution",

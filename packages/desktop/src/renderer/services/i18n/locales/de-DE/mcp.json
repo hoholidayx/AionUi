@@ -4,6 +4,12 @@
     "description": "Model Context Protocol-Server und -Tools verwalten"
   },
   "label": "MCP",
+  "imageBackend": {
+    "label": "Dienst zur Bilderzeugung",
+    "default": "Globalen Standard verwenden",
+    "defaultWithName": "Globaler Standard · {{name}}",
+    "unavailable": "Der ausgewählte Bilderzeugungsdienst ist nicht verfügbar"
+  },
   "servers": "Server",
   "tools": "Tools",
   "executionHistory": "Ausführungsverlauf",

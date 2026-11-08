@@ -6,7 +6,7 @@
 
 import { act, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { IMcpServer } from '@/common/config/storage';
+import type { IMcpServer, TProviderWithModel } from '@/common/config/storage';
 import { useGuidSend, type GuidSendDeps } from '@/renderer/pages/guid/hooks/useGuidSend';
 
 const createConversationInvokeMock = vi.fn();
@@ -81,6 +81,22 @@ describe('useGuidSend', () => {
     swrMutateMock.mockReset();
     swrMutateMock.mockResolvedValue(undefined);
   });
+
+  it.each(['aionrs', 'claude'] as const)(
+    'sends the initial image backend only for native Aion (%s)',
+    async (backend) => {
+      const deps = createDeps();
+      deps.selectedAssistantBackend = backend;
+      deps.current_model = { use_model: 'example-model' } as TProviderWithModel;
+      deps.imageBackendId = 'image-backend';
+      const { result } = renderHook(() => useGuidSend(deps));
+
+      await act(() => result.current.handleSend());
+
+      const { extra } = createConversationInvokeMock.mock.calls[0][0];
+      expect(extra.image_backend_id).toBe(backend === 'aionrs' ? 'image-backend' : undefined);
+    }
+  );
 
   it('passes selected mode into assistant conversation overrides when creating a preset ACP conversation', async () => {
     const deps = createDeps();

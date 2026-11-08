@@ -4,6 +4,12 @@
     "description": "مدیریت سرورها و ابزارهای Model Context Protocol"
   },
   "label": "MCP",
+  "imageBackend": {
+    "label": "سرویس تولید تصویر",
+    "default": "استفاده از پیش‌فرض سراسری",
+    "defaultWithName": "پیش‌فرض سراسری · {{name}}",
+    "unavailable": "سرویس تولید تصویر انتخاب‌شده در دسترس نیست"
+  },
   "servers": "سرورها",
   "tools": "ابزارها",
   "executionHistory": "تاریخچه اجرا",

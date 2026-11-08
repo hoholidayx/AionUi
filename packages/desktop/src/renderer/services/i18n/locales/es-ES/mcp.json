@@ -4,6 +4,12 @@
     "description": "Administra servidores y herramientas del Protocolo de Contexto de Modelos"
   },
   "label": "MCP",
+  "imageBackend": {
+    "label": "Servicio de generación de imágenes",
+    "default": "Usar el valor global",
+    "defaultWithName": "Valor global · {{name}}",
+    "unavailable": "El servicio de generación de imágenes seleccionado no está disponible"
+  },
   "servers": "Servidores",
   "tools": "Herramientas",
   "executionHistory": "Historial de ejecución",

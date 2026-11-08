@@ -7,6 +7,7 @@
 import { ipcBridge } from '@/common';
 import type { IConversationMcpStatus } from '@/common/config/storage';
 import AgentModeSelector from '@/renderer/components/agent/AgentModeSelector';
+import ImageBackendSelector from '@/renderer/components/agent/ImageBackendSelector';
 import CommandQueuePanel from '@/renderer/components/chat/CommandQueuePanel';
 import MobileActionSheet, {
   type MobileActionSheetEntry,
@@ -34,6 +35,7 @@ import {
 import { useConversationRuntimeView } from '@/renderer/pages/conversation/runtime/useConversationRuntimeView';
 import { getConversationRuntimeWorkspaceErrorMessage } from '@/renderer/pages/conversation/utils/conversationCreateError';
 import { getChatSurfaceWidthClass } from '@/renderer/pages/conversation/utils/chatSurfaceWidth';
+import { refreshConversationCache } from '@/renderer/pages/conversation/utils/conversationCache';
 import { ensureConversationRuntime } from '@/renderer/pages/conversation/utils/ensureConversationRuntime';
 import { usePreviewContext } from '@/renderer/pages/conversation/Preview';
 import { useTeamPermission } from '@/renderer/pages/team/hooks/TeamPermissionContext';
@@ -50,7 +52,7 @@ import { collectChatFileRefs, splitChatFileRefs } from '@/renderer/utils/file/me
 import type { AgentModeOption } from '@/renderer/utils/model/agentTypes';
 import { Button, Message, Tag } from '@arco-design/web-react';
 import { Brain, Lightning, MagicHat, Shield } from '@icon-park/react';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { classifyConversationBusyError } from '../conversationBusyError';
 import { useAionrsMessage } from './useAionrsMessage';
@@ -119,14 +121,17 @@ const useSendBoxDraft = (conversation_id: string) => {
 const AionrsSendBox: React.FC<{
   conversation_id: string;
   modelSelection: AionrsModelSelection;
+  imageBackendId?: string | null;
   session_mode?: string;
   agent_name?: string;
   teamSendMessage?: (payload: { input: string; files: ChatFileRef[] }) => Promise<void>;
   teamRuntime?: TeamSendBoxRuntime;
-}> = ({ conversation_id, modelSelection, session_mode, agent_name, teamSendMessage, teamRuntime }) => {
+}> = ({ conversation_id, modelSelection, imageBackendId, session_mode, agent_name, teamSendMessage, teamRuntime }) => {
   const [dynamicModes, setDynamicModes] = useState<AgentModeOption[]>([]);
   const [currentMode, setCurrentMode] = useState<string | undefined>(session_mode);
   const [isMobileSheetOpen, setIsMobileSheetOpen] = useState(false);
+  const [savingImageBackend, setSavingImageBackend] = useState(false);
+  const savingImageBackendRef = useRef(false);
   const layout = useLayoutContext();
   const isMobile = Boolean(layout?.isMobile);
   const conversationContext = useConversationContextSafe();
@@ -219,6 +224,24 @@ const AionrsSendBox: React.FC<{
   };
   const isCancelling = runtimeView.state === 'cancelling';
   const isBusy = isCancelling || commandQueueRuntimeGate.isProcessing || !commandQueueRuntimeGate.canSendMessage;
+  const changeImageBackend = async (id: string | null) => {
+    if (savingImageBackendRef.current || isBusy || id === (imageBackendId ?? null)) return;
+    savingImageBackendRef.current = true;
+    setSavingImageBackend(true);
+    try {
+      const updated = await ipcBridge.conversation.update.invoke({
+        id: conversation_id,
+        updates: { extra: { image_backend_id: id } },
+      });
+      if (!updated) throw new Error('Image backend selection was not saved');
+      await refreshConversationCache(conversation_id);
+    } catch {
+      Message.error(t('common.saveFailed'));
+    } finally {
+      savingImageBackendRef.current = false;
+      setSavingImageBackend(false);
+    }
+  };
 
   const setContentRef = useLatestRef(setContent);
   const contentRef = useLatestRef(content);
@@ -390,6 +413,7 @@ const AionrsSendBox: React.FC<{
   // enqueuing. The only way to queue a message while busy is the explicit
   // "add to queue" entry (handleAddToQueue below).
   const onSendHandler = async (message: string): Promise<void | false> => {
+    if (savingImageBackendRef.current) return false;
     if (isBusy) {
       Message.warning(
         t('conversation.commandQueue.midturnBlocked', {
@@ -726,6 +750,14 @@ const AionrsSendBox: React.FC<{
   );
   const sendBoxWidthClass = getChatSurfaceWidthClass();
 
+  const imageBackendSelector = !teamRuntime && (
+    <ImageBackendSelector
+      value={imageBackendId}
+      disabled={savingImageBackend || isBusy}
+      onChange={(id) => void changeImageBackend(id)}
+    />
+  );
+
   return (
     <div className={`${sendBoxWidthClass} flex flex-col mt-auto mb-16px`}>
       <CommandQueuePanel
@@ -770,7 +802,7 @@ const AionrsSendBox: React.FC<{
         active={teamRuntime?.isActive}
         onFocused={teamRuntime?.onFocus}
         disabled={!current_model?.use_model}
-        sendDisabled={isBusy}
+        sendDisabled={isBusy || savingImageBackend}
         sendDisabledTooltip={
           isBusy
             ? t('conversation.commandQueue.midturnBlockedSendHint', {
@@ -803,6 +835,7 @@ const AionrsSendBox: React.FC<{
         }
         rightTools={
           <div className='flex items-center gap-8px min-w-0'>
+            {!isMobile && imageBackendSelector}
             <AgentModeSelector
               backend='aionrs'
               conversation_id={conversation_id}
@@ -822,6 +855,7 @@ const AionrsSendBox: React.FC<{
         }
         prefix={
           <>
+            {isMobile && imageBackendSelector}
             {uploadFile.length > 0 && (
               <HorizontalFileList>
                 {uploadFile.map((path) => (

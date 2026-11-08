@@ -1,13 +1,15 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useSWRConfig } from 'swr';
 import { ipcBridge } from '@/common';
 import type { IMcpServer } from '@/common/config/storage';
-import { ensureBackendMcpCatalog } from './catalog';
+import { ensureBackendMcpCatalog, IMAGE_BACKEND_CATALOG_KEY } from './catalog';
 
 /**
  * MCP server state hook.
  * Combines backend-managed user servers with extension-contributed servers.
  */
 export const useMcpServers = () => {
+  const { mutate } = useSWRConfig();
   const [mcpServers, setMcpServers] = useState<IMcpServer[]>([]);
   const [extensionMcpServers, setExtensionMcpServers] = useState<IMcpServer[]>([]);
   const [isMcpServersLoading, setIsMcpServersLoading] = useState(true);
@@ -52,12 +54,16 @@ export const useMcpServers = () => {
       });
   }, []);
 
-  const saveMcpServers = useCallback((serversOrUpdater: IMcpServer[] | ((prev: IMcpServer[]) => IMcpServer[])) => {
-    setMcpServers((prevServers) =>
-      typeof serversOrUpdater === 'function' ? serversOrUpdater(prevServers) : serversOrUpdater
-    );
-    return Promise.resolve();
-  }, []);
+  const saveMcpServers = useCallback(
+    (serversOrUpdater: IMcpServer[] | ((prev: IMcpServer[]) => IMcpServer[])) => {
+      setMcpServers((prevServers) =>
+        typeof serversOrUpdater === 'function' ? serversOrUpdater(prevServers) : serversOrUpdater
+      );
+      void mutate((key) => Array.isArray(key) && key[0] === IMAGE_BACKEND_CATALOG_KEY).catch(() => {});
+      return Promise.resolve();
+    },
+    [mutate]
+  );
 
   return {
     mcpServers,

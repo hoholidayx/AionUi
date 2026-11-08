@@ -127,7 +127,9 @@ const _AddNewConversation: React.FC<{ conversation: TChatConversation }> = ({ co
                   // source conversation's agy session instead of starting clean.
                   source.type === 'acp' || source.type === 'antigravity'
                     ? { ...source.extra, acp_session_id: undefined, acp_session_updated_at: undefined }
-                    : source.extra,
+                    : source.type === 'aionrs'
+                      ? { ...source.extra, image_backend_id: undefined }
+                      : source.extra,
               } as TChatConversation,
             });
             void navigate(`/conversation/${id}`);
@@ -250,6 +252,7 @@ const AionrsConversationPanel: React.FC<{ conversation: AionrsConversation; slid
         workspace={conversation.extra.workspace}
         emptySlot={emptySlot}
         modelSelection={modelSelection}
+        imageBackendId={conversation.extra.image_backend_id}
         session_mode={conversation.extra?.session_mode}
         cron_job_id={cronJobId}
         loadedSkills={(conversation.extra as { skills?: string[] } | undefined)?.skills}

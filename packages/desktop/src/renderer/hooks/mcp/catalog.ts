@@ -2,6 +2,8 @@ import { mcpService } from '@/common/adapter/ipcBridge';
 import type { IMcpServer, IMcpServerTransport, ISessionMcpServer } from '@/common/config/storage';
 import { getClientBusinessSetting } from '@/renderer/services/clientBusinessSettings';
 
+export const IMAGE_BACKEND_CATALOG_KEY = 'mcp.image-backends';
+
 type BackendMcpTransport = Exclude<IMcpServerTransport, { type: 'streamable_http' }>;
 
 type BackendMcpPayload = {

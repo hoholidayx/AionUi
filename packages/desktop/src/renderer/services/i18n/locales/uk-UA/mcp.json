@@ -4,6 +4,12 @@
     "description": "Керування серверами та інструментами Model Context Protocol"
   },
   "label": "MCP",
+  "imageBackend": {
+    "label": "Сервіс генерації зображень",
+    "default": "Використовувати глобальне налаштування",
+    "defaultWithName": "Глобальне налаштування · {{name}}",
+    "unavailable": "Вибраний сервіс генерації зображень недоступний"
+  },
   "servers": "Сервери",
   "tools": "Інструменти",
   "executionHistory": "Історія виконання",

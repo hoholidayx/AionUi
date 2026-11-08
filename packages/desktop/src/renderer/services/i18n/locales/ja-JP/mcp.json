@@ -4,6 +4,12 @@
     "description": "モデルコンテキストプロトコルサーバーとツールを管理"
   },
   "label": "MCP",
+  "imageBackend": {
+    "label": "画像生成バックエンド",
+    "default": "グローバル既定を使用",
+    "defaultWithName": "グローバル既定 · {{name}}",
+    "unavailable": "選択した画像生成バックエンドは利用できません"
+  },
   "servers": "サーバー",
   "tools": "ツール",
   "executionHistory": "実行履歴",

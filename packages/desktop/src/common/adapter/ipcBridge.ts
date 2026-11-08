@@ -270,6 +270,8 @@ export const auth = {
 // Conversation — REST + WS
 // ---------------------------------------------------------------------------
 
+type ConversationPatch<T> = { [K in keyof T]?: K extends 'extra' ? Partial<T[K]> : T[K] };
+
 export const conversation = {
   create: withResponseMap(
     httpPost<TChatConversation, ICreateConversationParams>('/api/conversations', (p) => buildCreateConversationBody(p)),
@@ -312,7 +314,11 @@ export const conversation = {
   // 'auto' = frontend-derived default title (stays agent-overwritable).
   update: httpPatch<
     boolean,
-    { id: string; updates: Partial<TChatConversation> & { name_source?: 'user' | 'auto' }; merge_extra?: boolean }
+    {
+      id: string;
+      updates: ConversationPatch<TChatConversation> & { name_source?: 'user' | 'auto' };
+      merge_extra?: boolean;
+    }
   >(
     (p) => `/api/conversations/${p.id}`,
     (p) => {
@@ -1860,6 +1866,7 @@ export interface ICreateConversationParams {
     exclude_auto_inject_skills?: string[];
     selected_mcp_server_ids?: string[];
     selected_session_mcp_servers?: ISessionMcpServer[];
+    image_backend_id?: string | null;
     codex_model?: string;
     thought_level?: string;
     cached_config_options?: import('../types/platform/acpTypes').AcpSessionConfigOption[];

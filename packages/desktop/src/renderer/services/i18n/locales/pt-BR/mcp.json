@@ -1,5 +1,11 @@
 {
   "label": "MCP",
+  "imageBackend": {
+    "label": "Serviço de geração de imagens",
+    "default": "Usar padrão global",
+    "defaultWithName": "Padrão global · {{name}}",
+    "unavailable": "Serviço de geração de imagens selecionado indisponível"
+  },
   "integration": {
     "title": "Integração MCP",
     "description": "Gerenciar servidores e ferramentas do Model Context Protocol"

@@ -4,6 +4,12 @@
     "description": "Manage Model Context Protocol servers and tools"
   },
   "label": "MCP",
+  "imageBackend": {
+    "label": "Image backend",
+    "default": "Use global default",
+    "defaultWithName": "Global default · {{name}}",
+    "unavailable": "Selected image backend unavailable"
+  },
   "servers": "Servers",
   "tools": "Tools",
   "executionHistory": "Execution History",
