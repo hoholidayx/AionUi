@@ -24,6 +24,7 @@ const {
   draftMutateMock,
   draftContentRef,
   runtimeViewIsProcessingRef,
+  queueCanSendRef,
 } = vi.hoisted(() => ({
   ensureConversationRuntimeMock: vi.fn().mockResolvedValue({ recovered: false, config_options: [], runtime: null }),
   sendMessageInvokeMock: vi.fn().mockResolvedValue(undefined),
@@ -41,6 +42,7 @@ const {
   draftMutateMock: vi.fn(),
   draftContentRef: { current: '' },
   runtimeViewIsProcessingRef: { current: false },
+  queueCanSendRef: { current: true },
 }));
 
 vi.mock('@/common', () => ({
@@ -203,21 +205,24 @@ vi.mock('@/renderer/hooks/ui/useLatestRef', () => ({
   useLatestRef: <T,>(value: T) => ({ current: value }),
 }));
 vi.mock('@/renderer/pages/conversation/platforms/useConversationCommandQueue', () => ({
-  useConversationCommandQueue: () => ({
-    items: [],
-    isPaused: false,
-    isInteractionLocked: false,
-    hasPendingCommands: false,
-    enqueue: enqueueMock,
-    remove: vi.fn(),
-    clear: vi.fn(),
-    reorder: vi.fn(),
-    pause: vi.fn(),
-    resume: vi.fn(),
-    lockInteraction: vi.fn(),
-    unlockInteraction: vi.fn(),
-    resetActiveExecution: vi.fn(),
-  }),
+  useConversationCommandQueue: ({ runtimeGate }: { runtimeGate: { canSendMessage: boolean } }) => {
+    queueCanSendRef.current = runtimeGate.canSendMessage;
+    return {
+      items: [],
+      isPaused: false,
+      isInteractionLocked: false,
+      hasPendingCommands: false,
+      enqueue: enqueueMock,
+      remove: vi.fn(),
+      clear: vi.fn(),
+      reorder: vi.fn(),
+      pause: vi.fn(),
+      resume: vi.fn(),
+      lockInteraction: vi.fn(),
+      unlockInteraction: vi.fn(),
+      resetActiveExecution: vi.fn(),
+    };
+  },
 }));
 vi.mock('@/renderer/pages/conversation/runtime/useConversationRuntimeView', () => ({
   useConversationRuntimeView: () => ({
@@ -343,8 +348,10 @@ describe('AionrsSendBox', () => {
       updates: { extra: { image_backend_id: null } },
     });
     expect(sendMessageInvokeMock).not.toHaveBeenCalled();
+    expect(queueCanSendRef.current).toBe(false);
     await act(async () => finishUpdate(true));
     await waitFor(() => expect(refreshConversationCacheMock).toHaveBeenCalledWith('conv-1'));
+    expect(queueCanSendRef.current).toBe(true);
   });
 
   it('reports a rejected backend selection without refreshing the conversation', async () => {

@@ -366,13 +366,16 @@ const AionrsSendBox: React.FC<{
     conversation_id: conversation_id,
     enabled: true,
     isBusy,
-    runtimeGate: commandQueueRuntimeGate,
+    runtimeGate: {
+      ...commandQueueRuntimeGate,
+      canSendMessage: commandQueueRuntimeGate.canSendMessage && !savingImageBackend,
+    },
     onExecute: executeCommand,
   });
 
   // Handle initial message from Guid page — wait until model is ready
   useEffect(() => {
-    if (!conversation_id || !current_model?.use_model) return;
+    if (!conversation_id || !current_model?.use_model || savingImageBackendRef.current) return;
 
     const storageKey = `aionrs_initial_message_${conversation_id}`;
     const processedKey = `aionrs_initial_processed_${conversation_id}`;
@@ -401,7 +404,7 @@ const AionrsSendBox: React.FC<{
     };
 
     void processInitialMessage();
-  }, [conversation_id, current_model?.use_model, executeCommand]);
+  }, [conversation_id, current_model?.use_model, executeCommand, savingImageBackend]);
 
   // `@@` session references the user picked. Declared before the handlers that
   // read it — every send path has to both forward and release it.
