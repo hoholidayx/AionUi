@@ -1219,7 +1219,10 @@ export const acpConversation = {
 // MCP Service — routed to /api/mcp/*
 // ---------------------------------------------------------------------------
 
-type McpServerConfig = Pick<IMcpServer, 'name' | 'description' | 'transport' | 'original_json' | 'builtin' | 'purpose'>;
+type McpServerConfig = Pick<
+  IMcpServer,
+  'name' | 'description' | 'transport' | 'original_json' | 'builtin' | 'purpose' | 'backend_alias'
+>;
 
 export const mcpService = {
   listServers: httpGet<IMcpServer[], void>('/api/mcp/servers'),

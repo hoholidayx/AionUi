@@ -642,6 +642,7 @@ export interface IMcpServer {
   /** Built-in MCP server managed by AionUi (hide edit/delete in UI) */
   builtin?: boolean;
   purpose?: McpServerPurpose;
+  backend_alias?: string | null;
   is_default?: boolean;
 }
 

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { toBackendMcpPayload } from '@/renderer/hooks/mcp/catalog';
 import { parseMcpJsonImport } from '@/renderer/pages/settings/ToolsSettings/mcpJsonImport';
 
 describe('parseMcpJsonImport', () => {
@@ -157,6 +158,27 @@ describe('parseMcpJsonImport', () => {
     expect(
       parseMcpJsonImport({ image: { type: 'sse', url: 'https://example.com/sse', purpose: 'async_image' } })
     ).toEqual({ isValid: false, errorKey: 'settings.mcpAsyncImageHttpRequired' });
+  });
+
+  it('distinguishes a new alias, an explicit clear and an omitted alias on import', () => {
+    const transport = { type: 'http', url: 'https://example.com/mcp' };
+    const result = parseMcpJsonImport({
+      primary: { ...transport, purpose: 'async_image', backend_alias: 'example-fast' },
+      secondary: { ...transport, backend_alias: null },
+      legacy: { ...transport, purpose: 'async_image' },
+    });
+    expect(result.isValid).toBe(true);
+    if (result.isValid) {
+      const payloads = result.servers.map((server) => toBackendMcpPayload({ ...server, original_json: '{}' }));
+      expect(payloads.map((payload) => payload.backend_alias)).toEqual(['example-fast', null, undefined]);
+      expect(payloads[2]).not.toHaveProperty('backend_alias');
+    }
+  });
+
+  it('rejects an alias that is neither text nor null', () => {
+    expect(
+      parseMcpJsonImport([{ name: 'image', purpose: 'async_image', url: 'https://example.com/mcp', backend_alias: 7 }])
+    ).toEqual({ isValid: false, errorKey: 'settings.mcpBackendAliasTypeError' });
   });
 
   it('discards the legacy default even in original JSON and for general servers', () => {

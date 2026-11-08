@@ -8,7 +8,7 @@ interface AddMcpServerModalProps {
   server?: IMcpServer;
   existingServerNames?: string[];
   onCancel: () => void;
-  onSubmit: (server: Omit<IMcpServer, 'id' | 'created_at' | 'updated_at'>) => Promise<void> | void;
+  onSubmit: (server: Omit<IMcpServer, 'id' | 'created_at' | 'updated_at'>) => Promise<IMcpServer | undefined>;
   onBatchImport?: (
     servers: Omit<IMcpServer, 'id' | 'created_at' | 'updated_at'>[]
   ) => Promise<IMcpServer[] | void> | IMcpServer[] | void;

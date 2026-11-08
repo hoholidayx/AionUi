@@ -172,6 +172,9 @@ const McpServerHeader: React.FC<McpServerHeaderProps> = ({
         {server.purpose === 'async_image' && (
           <Tag>{t(server.is_default ? 'settings.mcpAsyncImageDefaultLabel' : 'settings.mcpPurposeAsyncImage')}</Tag>
         )}
+        {server.purpose === 'async_image' && server.backend_alias && (
+          <Tag title={t('settings.mcpBackendAlias')}>{server.backend_alias}</Tag>
+        )}
         {statusPopoverContent ? (
           <Popover content={statusPopoverContent} trigger='hover' position='top'>
             <span className='flex items-center cursor-default'>{statusIcon}</span>

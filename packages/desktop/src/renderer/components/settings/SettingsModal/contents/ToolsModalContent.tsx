@@ -136,6 +136,7 @@ const ModalMcpManagementSection: React.FC<{
       if (addedServer) {
         void handleTestMcpConnection(addedServer, { notify: false });
       }
+      return addedServer;
     },
     [handleAddMcpServer, handleTestMcpConnection]
   );
@@ -146,6 +147,7 @@ const ModalMcpManagementSection: React.FC<{
       if (updatedServer) {
         void handleTestMcpConnection(updatedServer, { notify: false });
       }
+      return updatedServer;
     },
     [handleEditMcpServer, handleTestMcpConnection]
   );

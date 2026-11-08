@@ -5,13 +5,15 @@ export type McpJsonImportErrorKey =
   | 'settings.mcpJsonBareServerError'
   | 'settings.mcpJsonUrlRequiredError'
   | 'settings.mcpJsonStdioCommandRequiredError'
-  | 'settings.mcpAsyncImageHttpRequired';
+  | 'settings.mcpAsyncImageHttpRequired'
+  | 'settings.mcpBackendAliasTypeError';
 
 export type ParsedMcpJsonServer = {
   name: string;
   description: string;
   transport: IMcpServerTransport;
   purpose?: McpServerPurpose;
+  backend_alias?: string | null;
   originalConfig: Record<string, unknown>;
 };
 
@@ -137,7 +139,12 @@ const parseServer = (
     return { isValid: false, errorKey: 'settings.mcpAsyncImageHttpRequired' };
   }
 
-  const { is_default: _legacyDefault, ...originalConfig } = config;
+  const { is_default: _legacyDefault, backend_alias, ...originalConfig } = config;
+  const backendAlias = stringOrUndefined(backend_alias);
+  if (backend_alias !== undefined && backend_alias !== null && backendAlias === undefined) {
+    return { isValid: false, errorKey: 'settings.mcpBackendAliasTypeError' };
+  }
+
   return {
     isValid: true,
     server: {
@@ -145,6 +152,7 @@ const parseServer = (
       description: stringOrUndefined(config.description) || IMPORTED_DESCRIPTION,
       transport: transportResult.transport,
       ...(purpose !== undefined && { purpose }),
+      ...(backend_alias !== undefined && { backend_alias: backendAlias ?? null }),
       originalConfig,
     },
   };

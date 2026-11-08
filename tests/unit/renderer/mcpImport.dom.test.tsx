@@ -7,20 +7,20 @@
 import React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { IMcpServer } from '@/common/config/storage';
 
 const getAgentMcpConfigsInvoke = vi.fn();
 const getManagedAgents = vi.fn();
 
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string, params?: Record<string, unknown>) => {
-      if (params && typeof params.count === 'number') {
-        return `${key}:${params.count}`;
-      }
-      return key;
-    },
-  }),
-}));
+vi.mock('react-i18next', () => {
+  const t = (key: string, params?: Record<string, unknown>) => {
+    if (params && typeof params.count === 'number') {
+      return `${key}:${params.count}`;
+    }
+    return key;
+  };
+  return { useTranslation: () => ({ t }) };
+});
 
 vi.mock('@/common/adapter/ipcBridge', () => ({
   mcpService: {
@@ -39,15 +39,24 @@ vi.mock('@/renderer/components/base/AionModal', () => ({
     visible,
     children,
     footer,
+    onOk,
+    okButtonProps,
   }: {
     visible: boolean;
     children: React.ReactNode;
     footer?: { render?: () => React.ReactNode };
+    onOk?: () => void;
+    okButtonProps?: { disabled?: boolean };
   }) =>
     visible ? (
       <div>
         {children}
         {footer?.render?.()}
+        {onOk && (
+          <button disabled={okButtonProps?.disabled} onClick={onOk}>
+            Save
+          </button>
+        )}
       </div>
     ) : null,
 }));
@@ -105,7 +114,17 @@ vi.mock('@arco-design/web-react', () => {
   );
 
   return {
+    Alert: () => null,
     Button,
+    Input: ({
+      'aria-label': label,
+      value,
+      onChange,
+    }: {
+      'aria-label': string;
+      value: string;
+      onChange: (v: string) => void;
+    }) => <input aria-label={label} value={value} onChange={(event) => onChange(event.target.value)} />,
     Select,
     Spin: () => <span>spin</span>,
     Tag: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
@@ -113,8 +132,12 @@ vi.mock('@arco-design/web-react', () => {
   };
 });
 
-vi.mock('@/renderer/pages/settings/components/JsonImportModal', () => ({
-  default: ({ visible }: { visible: boolean }) => (visible ? <div data-testid='json-import-modal' /> : null),
+vi.mock('@/renderer/hooks/context/ThemeContext', () => ({ useThemeContext: () => ({ theme: 'light' }) }));
+
+vi.mock('@uiw/react-codemirror', () => ({
+  default: ({ value, onChange }: { value: string; onChange: (v: string) => void }) => (
+    <textarea aria-label='MCP JSON' value={value} onChange={(event) => onChange(event.target.value)} />
+  ),
 }));
 
 vi.mock('@/renderer/pages/settings/components/OneClickImportModal', async () => {
@@ -125,6 +148,7 @@ vi.mock('@/renderer/pages/settings/components/OneClickImportModal', async () => 
 });
 
 import AddMcpServerModal from '@/renderer/pages/settings/components/AddMcpServerModal';
+import JsonImportModal from '@/renderer/pages/settings/components/JsonImportModal';
 import OneClickImportModal from '@/renderer/pages/settings/components/OneClickImportModal';
 
 describe('MCP import flows', () => {
@@ -166,5 +190,46 @@ describe('MCP import flows', () => {
       expect(getAgentMcpConfigsInvoke).toHaveBeenCalledWith();
     });
     expect(getManagedAgents).not.toHaveBeenCalled();
+  });
+
+  it('edits the saved alias and sends an explicit clear when the field is emptied', async () => {
+    const server: IMcpServer = {
+      id: 'image-server-id',
+      name: 'Example Image',
+      purpose: 'async_image',
+      backend_alias: 'current-alias',
+      transport: { type: 'http', url: 'https://example.com/mcp' },
+      enabled: true,
+      created_at: 0,
+      updated_at: 0,
+      original_json: JSON.stringify({
+        mcpServers: { 'Example Image': { url: 'https://example.com/mcp', backend_alias: 'stale-alias' } },
+      }),
+    };
+    const onSubmit = vi.fn().mockResolvedValue(server);
+    render(<JsonImportModal visible server={server} onCancel={vi.fn()} onSubmit={onSubmit} />);
+
+    const field = screen.getByRole('textbox', { name: 'settings.mcpBackendAlias' });
+    expect(field).toHaveValue('current-alias');
+    fireEvent.change(field, { target: { value: '' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ backend_alias: null })));
+  });
+
+  it('keeps the JSON open for correction after the server rejects an import', async () => {
+    const onCancel = vi.fn();
+    const onBatchImport = vi.fn().mockResolvedValue([]);
+    render(<JsonImportModal visible onCancel={onCancel} onSubmit={vi.fn()} onBatchImport={onBatchImport} />);
+
+    const json = '{"image":{"url":"https://example.com/mcp","purpose":"async_image","backend_alias":"taken"}}';
+    const editor = screen.getByRole('textbox', { name: 'MCP JSON' });
+    const submit = screen.getByRole('button', { name: 'Save' });
+    fireEvent.change(editor, { target: { value: json } });
+    fireEvent.click(submit);
+
+    await waitFor(() => expect(submit).toBeEnabled());
+    expect(onBatchImport).toHaveBeenCalledWith([expect.objectContaining({ backend_alias: 'taken' })]);
+    expect(onCancel).not.toHaveBeenCalled();
   });
 });

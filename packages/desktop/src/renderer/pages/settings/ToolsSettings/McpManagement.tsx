@@ -78,6 +78,7 @@ const McpManagement: React.FC<McpManagementProps> = ({ message }) => {
       }
 
       void handleTestMcpConnection(addedServer, { notify: false });
+      return addedServer;
     },
     [handleAddMcpServer, handleTestMcpConnection]
   );
@@ -90,6 +91,7 @@ const McpManagement: React.FC<McpManagementProps> = ({ message }) => {
       }
 
       void handleTestMcpConnection(updatedServer, { notify: false });
+      return updatedServer;
     },
     [handleEditMcpServer, handleTestMcpConnection]
   );
