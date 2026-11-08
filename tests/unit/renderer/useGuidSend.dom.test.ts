@@ -154,6 +154,44 @@ describe('useGuidSend', () => {
     expect(payload.extra.selected_session_mcp_servers).toEqual([expect.objectContaining({ id: 'builtin-mcp' })]);
   });
 
+  it.each([
+    ['aionrs', true],
+    ['aionrs', false],
+    ['claude', false],
+  ] as const)(
+    'keeps the async MCP id without freezing its transport for %s (explicit selection %s)',
+    async (backend, explicit) => {
+      const deps = createDeps();
+      const base = {
+        enabled: true,
+        created_at: 0,
+        updated_at: 0,
+        original_json: '{}',
+        transport: { type: 'http', url: 'https://example.test/mcp' },
+      } as const;
+      deps.availableMcpServers = [
+        { ...base, id: 'image', name: 'Async Image', purpose: 'async_image' },
+        { ...base, id: 'general', name: 'General MCP' },
+        { ...base, id: 'builtin', name: 'Builtin MCP', builtin: true },
+      ];
+      deps.selectedAssistantBackend = backend;
+      deps.current_model = { provider_id: 'openai', model: 'example-model', use_model: 'example-model' } as never;
+      const selectedIds = ['image', 'general', 'builtin'];
+      deps.selectedMcpServerIds = explicit ? selectedIds : undefined;
+      deps.assistantDefaultMcpIds = explicit ? undefined : selectedIds;
+      const { result } = renderHook(() => useGuidSend(deps));
+
+      await act(async () => result.current.handleSend());
+
+      const { extra } = createConversationInvokeMock.mock.calls[0][0];
+      expect(extra.selected_mcp_server_ids).toEqual(['image', 'general']);
+      expect(extra.selected_session_mcp_servers).toEqual([
+        expect.objectContaining({ id: 'general' }),
+        expect.objectContaining({ id: 'builtin' }),
+      ]);
+    }
+  );
+
   it('does not write legacy preset_assistant_id for preset assistant sends', async () => {
     const deps = createDeps();
 

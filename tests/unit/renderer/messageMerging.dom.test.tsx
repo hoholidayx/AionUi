@@ -8,7 +8,8 @@ import React, { type PropsWithChildren } from 'react';
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ipcBridge } from '@/common';
-import type { IMessageAcpToolCall, IMessageText, IMessageThinking } from '@/common/chat/chatLib';
+import type { MessageCursorPage } from '@/common/adapter/ipcBridge';
+import type { IMessageAcpToolCall, IMessageText, IMessageThinking, TMessage } from '@/common/chat/chatLib';
 import {
   MessageListLoadingProvider,
   MessageListProvider,
@@ -16,6 +17,7 @@ import {
   useAddOrUpdateMessage,
   useMessageLstCache,
   useMessageList,
+  usePrependHistoryPage,
   useReplaceWithAnchorWindow,
 } from '@/renderer/pages/conversation/Messages/hooks';
 
@@ -36,7 +38,11 @@ vi.mock('@/common', () => ({
       getConversationMessages: {
         invoke: vi.fn(),
       },
+      getConversationMessage: {
+        invoke: vi.fn(),
+      },
     },
+    realtime: { reconnected: { on: vi.fn().mockReturnValue(() => {}) } },
   },
 }));
 
@@ -104,6 +110,28 @@ function createToolCallMessage(toolCallId: string): IMessageAcpToolCall {
   };
 }
 
+function createAsyncImageCard(
+  id: string,
+  createdAt: number,
+  status: IMessageAcpToolCall['content']['update']['status']
+): IMessageAcpToolCall {
+  const card = createToolCallMessage(id);
+  card.created_at = createdAt;
+  card.content.update.status = status;
+  card.content.update.raw_output = { async_image: status === 'completed' ? { attachment_id: id } : {} };
+  return card;
+}
+
+function messagePage(items: TMessage[], oldestCursor?: string): MessageCursorPage<TMessage> {
+  return {
+    items,
+    oldest_cursor: oldestCursor ?? null,
+    newest_cursor: null,
+    has_more_before: Boolean(oldestCursor),
+    has_more_after: false,
+  };
+}
+
 function TestWrapper({ children }: PropsWithChildren): JSX.Element {
   return <MessageListProvider value={[]}>{children}</MessageListProvider>;
 }
@@ -133,6 +161,19 @@ function useAnchorMessageHarness() {
     replaceWithAnchorWindow: useReplaceWithAnchorWindow(),
     messages: useMessageList(),
   };
+}
+
+function useAsyncImageRecoveryHarness(key = CONVERSATION_ID) {
+  useMessageLstCache(key, { recoverAsyncImages: true });
+  return { ...useMessageHarness(), prepend: usePrependHistoryPage() };
+}
+
+async function reconnect(): Promise<void> {
+  const listener = vi.mocked(ipcBridge.realtime.reconnected.on).mock.calls.at(-1)?.[0];
+  expect(listener).toBeDefined();
+  await act(async () => {
+    listener?.({ timestamp: Date.now() });
+  });
 }
 
 async function flushMessageQueue(): Promise<void> {
@@ -280,6 +321,119 @@ describe('message merging', () => {
       limit: 50,
       content_mode: 'compact',
     });
+  });
+
+  it('settles an older loaded image card when its completion was missed during a socket gap', async () => {
+    const newest = { ...createTextMessage('newest', 'newer than the loaded card'), created_at: 200 };
+    const pending = createAsyncImageCard('async-image:old', 100, 'pending');
+    const completed = createAsyncImageCard(pending.id, 100, 'completed');
+    vi.mocked(ipcBridge.database.getConversationMessages.invoke).mockResolvedValue(messagePage([newest]));
+    const get = vi.mocked(ipcBridge.database.getConversationMessage.invoke);
+    get.mockClear();
+    get.mockResolvedValue(completed);
+    const { result } = renderHook(() => useAsyncImageRecoveryHarness(), { wrapper: CacheWrapper });
+    await act(async () => {});
+    act(() => result.current.prepend([pending]));
+
+    await reconnect();
+
+    expect(get).toHaveBeenCalledWith({ conversation_id: CONVERSATION_ID, message_id: pending.id });
+    expect(result.current.messages).toEqual([completed, newest]);
+  });
+
+  it('finds a card whose initial and terminal frames were missed even beyond the newest page', async () => {
+    const beforeGap = { ...createTextMessage('before-gap', 'last rendered text before disconnect'), created_at: 100 };
+    const afterGap = { ...createTextMessage('after-gap', 'newer live text'), created_at: 300 };
+    const unseen = createAsyncImageCard('async-image:unseen', 150, 'completed');
+    const list = vi.mocked(ipcBridge.database.getConversationMessages.invoke);
+    list.mockClear();
+    list
+      .mockResolvedValueOnce(messagePage([beforeGap]))
+      .mockResolvedValueOnce(messagePage([afterGap], 'latest-page-cursor'))
+      .mockResolvedValueOnce(messagePage([beforeGap, unseen]))
+      .mockResolvedValue(messagePage([unseen, afterGap]));
+    const { result } = renderHook(() => useAsyncImageRecoveryHarness(), { wrapper: CacheWrapper });
+    await act(async () => {});
+    act(() => result.current.addOrUpdateMessage(afterGap));
+    await flushMessageQueue();
+
+    await reconnect();
+    await reconnect();
+
+    expect(list).toHaveBeenCalledWith(expect.objectContaining({ before: 'latest-page-cursor' }));
+    expect(result.current.messages).toEqual([beforeGap, unseen, afterGap]);
+  });
+
+  it('keeps a live terminal card when its older recovery response arrives out of order', async () => {
+    const pending = createAsyncImageCard('async-image:race', 100, 'pending');
+    const completed = createAsyncImageCard(pending.id, 100, 'completed');
+    vi.mocked(ipcBridge.database.getConversationMessages.invoke).mockResolvedValue(messagePage([pending]));
+    let settle: ((card: TMessage) => void) | undefined;
+    vi.mocked(ipcBridge.database.getConversationMessage.invoke).mockReturnValue(
+      new Promise((resolve) => {
+        settle = resolve;
+      })
+    );
+    const { result } = renderHook(() => useAsyncImageRecoveryHarness(), { wrapper: CacheWrapper });
+    await act(async () => {});
+    await reconnect();
+
+    act(() => result.current.addOrUpdateMessage(completed));
+    await flushMessageQueue();
+    await act(async () => settle?.(pending));
+
+    expect(result.current.messages).toEqual([completed]);
+  });
+
+  it('ignores reconnect responses for a conversation after switching away', async () => {
+    const pending = createAsyncImageCard('async-image:previous-chat', 100, 'pending');
+    const completed = createAsyncImageCard(pending.id, 100, 'completed');
+    const secondConversation = 'conversation-2';
+    const newMessage = {
+      ...createTextMessage('new-chat', 'separate conversation'),
+      conversation_id: secondConversation,
+    };
+    vi.mocked(ipcBridge.database.getConversationMessages.invoke).mockImplementation(async ({ conversation_id }) =>
+      messagePage(conversation_id === CONVERSATION_ID ? [pending] : [newMessage])
+    );
+    let settle: ((card: TMessage) => void) | undefined;
+    vi.mocked(ipcBridge.database.getConversationMessage.invoke).mockReturnValue(
+      new Promise((resolve) => {
+        settle = resolve;
+      })
+    );
+    const { rerender, result } = renderHook(({ key }) => useAsyncImageRecoveryHarness(key), {
+      initialProps: { key: CONVERSATION_ID },
+      wrapper: CacheWrapper,
+    });
+    await act(async () => {});
+    await reconnect();
+
+    rerender({ key: secondConversation });
+    await act(async () => settle?.(completed));
+
+    expect(result.current.messages).toEqual([newMessage]);
+  });
+
+  it('still restores newly discovered image cards when reading an old card fails', async () => {
+    const pending = createAsyncImageCard('async-image:missing', 100, 'pending');
+    const unseen = createAsyncImageCard('async-image:finished', 200, 'completed');
+    vi.mocked(ipcBridge.database.getConversationMessages.invoke)
+      .mockResolvedValueOnce(messagePage([pending]))
+      .mockResolvedValueOnce(messagePage([unseen]));
+    vi.mocked(ipcBridge.database.getConversationMessage.invoke).mockRejectedValueOnce(new Error('404'));
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      const { result } = renderHook(() => useAsyncImageRecoveryHarness(), { wrapper: CacheWrapper });
+      await act(async () => {});
+
+      await reconnect();
+
+      expect(result.current.messages).toEqual([pending, unseen]);
+      expect(warn).toHaveBeenCalled();
+    } finally {
+      warn.mockRestore();
+    }
   });
 
   it('flips a pending user message to finish when message.statusChanged arrives for it', async () => {

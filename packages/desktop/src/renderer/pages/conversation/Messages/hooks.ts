@@ -5,8 +5,14 @@
  */
 
 import { ipcBridge } from '@/common';
-import { isNewerAcpAsyncImageUpdate } from '@/common/chat/acpToolCallOutput';
-import type { AgentStreamErrorInfo, IMessageText, IMessageTips, TMessage } from '@/common/chat/chatLib';
+import { getAcpAsyncImage, isNewerAcpAsyncImageUpdate } from '@/common/chat/acpToolCallOutput';
+import type {
+  AgentStreamErrorInfo,
+  IMessageAcpToolCall,
+  IMessageText,
+  IMessageTips,
+  TMessage,
+} from '@/common/chat/chatLib';
 import {
   composeMessage,
   mergeAcpToolCallContent,
@@ -802,6 +808,67 @@ const preferPersistedOrLiveMessage = (persisted: TMessage, live: TMessage): TMes
   return persisted;
 };
 
+function isAsyncImageCard(message: TMessage | null | undefined): message is IMessageAcpToolCall {
+  return message?.type === 'acp_tool_call' && Boolean(getAcpAsyncImage(message.content?.update));
+}
+
+function mergeRecoveredAsyncImageCards(
+  conversationId: string,
+  currentList: TMessage[],
+  cards: IMessageAcpToolCall[]
+): TMessage[] {
+  const recovered = new Map(
+    cards.filter((card) => card.conversation_id === conversationId).map((card) => [getMessageMergeKey(card), card])
+  );
+  if (!recovered.size) return currentList;
+
+  const merged = currentList.map((message) => {
+    if (message.conversation_id !== conversationId || !isAsyncImageCard(message)) return message;
+    const key = getMessageMergeKey(message);
+    const persisted = recovered.get(key);
+    if (!persisted) return message;
+    recovered.delete(key);
+    return preferPersistedOrLiveMessage(persisted, message);
+  });
+
+  for (const card of recovered.values()) {
+    const following = merged.findIndex(
+      (message) =>
+        message.conversation_id === conversationId &&
+        message.created_at !== undefined &&
+        card.created_at !== undefined &&
+        message.created_at > card.created_at
+    );
+    merged.splice(following < 0 ? merged.length : following, 0, card);
+  }
+  return merged;
+}
+
+async function loadAsyncImageCardsSince(
+  conversationId: string,
+  newestKnownAt: number | null,
+  isCurrent: () => boolean
+): Promise<{ cards: IMessageAcpToolCall[]; newestAt: number | null }> {
+  const isNewCard = (message: TMessage): message is IMessageAcpToolCall =>
+    isAsyncImageCard(message) &&
+    (newestKnownAt === null || message.created_at === undefined || message.created_at >= newestKnownAt);
+  let page = await loadLatestConversationMessages(conversationId);
+  const newestAt = page.items.at(-1)?.created_at ?? newestKnownAt;
+  const pages = [page.items.filter(isNewCard)];
+  while (isCurrent() && page.has_more_before && page.oldest_cursor) {
+    // Include the watermark's entire timestamp. Two messages inserted in the
+    // same millisecond can sort in either order by their stable IDs.
+    const oldestAt = page.items[0]?.created_at;
+    if (newestKnownAt !== null && oldestAt !== undefined && oldestAt < newestKnownAt) break;
+    const before = page.oldest_cursor;
+    // eslint-disable-next-line no-await-in-loop -- Each page supplies the next cursor.
+    page = await loadConversationMessagePage(conversationId, { before });
+    pages.push(page.items.filter(isNewCard));
+    if (page.oldest_cursor === before) break;
+  }
+  return { cards: pages.toReversed().flat(), newestAt };
+}
+
 function mergeLoadedPageWithCurrent(conversationId: string, messages: TMessage[], currentList: TMessage[]): TMessage[] {
   if (!currentList.length) return foldSupersededTips(messages);
 
@@ -938,11 +1005,12 @@ export const useLoadAnchorMessageWindow = (conversationId?: string) => {
   );
 };
 
-export const useMessageLstCache = (key: string) => {
+export const useMessageLstCache = (key: string, { recoverAsyncImages = false } = {}) => {
   const update = useUpdateMessageList();
   const list = useMessageList();
   const setLoading = useUpdateMessageListLoading();
   const setPagination = useUpdateMessagePaginationState();
+  const newestKnownAt = useRef<number | null>(null);
   // Mirrors the current list into a ref so the turnCompleted handler below
   // can inspect it synchronously without re-subscribing to the WS event on
   // every list change (useState's functional updater runs asynchronously,
@@ -951,33 +1019,40 @@ export const useMessageLstCache = (key: string) => {
   useEffect(() => {
     listRef.current = list;
   }, [list]);
-  const loadMessages = useCallback(async (): Promise<TMessage[]> => {
-    const result = await loadLatestConversationMessages(key, {
-      limit: DEFAULT_MESSAGE_PAGE_LIMIT,
-      contentMode: 'compact',
-    });
-    const messages = result?.items?.map(normalizeDbMessage);
-    if (messages && Array.isArray(messages)) {
-      update((currentList) => mergeLoadedPageWithCurrent(key, messages, currentList));
-      setPagination({
-        oldestCursor: result.oldest_cursor ?? undefined,
-        newestCursor: result.newest_cursor ?? undefined,
-        hasMoreBefore: result.has_more_before,
-        hasMoreAfter: result.has_more_after,
-        isLoadingBefore: false,
-        isLoadingAnchor: false,
+  const loadMessages = useCallback(
+    async (onLoaded?: (newestAt: number | null) => void): Promise<TMessage[]> => {
+      const result = await loadLatestConversationMessages(key, {
+        limit: DEFAULT_MESSAGE_PAGE_LIMIT,
+        contentMode: 'compact',
       });
-      return messages;
-    }
-    return [];
-  }, [key, setPagination, update]);
+      const messages = result?.items?.map(normalizeDbMessage);
+      if (messages && Array.isArray(messages)) {
+        onLoaded?.(messages.at(-1)?.created_at ?? null);
+        update((currentList) => mergeLoadedPageWithCurrent(key, messages, currentList));
+        setPagination({
+          oldestCursor: result.oldest_cursor ?? undefined,
+          newestCursor: result.newest_cursor ?? undefined,
+          hasMoreBefore: result.has_more_before,
+          hasMoreAfter: result.has_more_after,
+          isLoadingBefore: false,
+          isLoadingAnchor: false,
+        });
+        return messages;
+      }
+      return [];
+    },
+    [key, setPagination, update]
+  );
 
   useEffect(() => {
     if (!key) return;
     let cancelled = false;
+    newestKnownAt.current = null;
     setLoading(true);
     setPagination({ ...EMPTY_MESSAGE_PAGINATION_STATE });
-    void loadMessages()
+    void loadMessages((newestAt) => {
+      if (!cancelled && newestKnownAt.current === null) newestKnownAt.current = newestAt;
+    })
       .catch((error) => {
         console.error('[useMessageLstCache] Failed to load messages from database:', error);
       })
@@ -990,6 +1065,46 @@ export const useMessageLstCache = (key: string) => {
       cancelled = true;
     };
   }, [key, loadMessages, setLoading, setPagination]);
+
+  useEffect(() => {
+    if (!key || !recoverAsyncImages) return;
+
+    let active = true;
+    let revision = 0;
+    const unsubscribe = ipcBridge.realtime.reconnected.on(() => {
+      const attempt = ++revision;
+      const isCurrent = () => active && attempt === revision;
+
+      // Existing pending cards can be outside the recent history window.
+      // Newly created cards may be absent entirely after a stream gap.
+      const pending = listRef.current.filter(
+        (message) =>
+          message.conversation_id === key &&
+          isAsyncImageCard(message) &&
+          (message.content.update.status === 'pending' || message.content.update.status === 'in_progress')
+      );
+      const newest = loadAsyncImageCardsSince(key, newestKnownAt.current, isCurrent).then(({ cards, newestAt }) => {
+        if (!isCurrent()) return;
+        newestKnownAt.current = newestAt;
+        update((currentList) => mergeRecoveredAsyncImageCards(key, currentList, cards));
+      });
+      const unfinished = pending.map(async ({ id }) => {
+        const card = await ipcBridge.database.getConversationMessage.invoke({ conversation_id: key, message_id: id });
+        if (isCurrent() && isAsyncImageCard(card)) {
+          update((currentList) => mergeRecoveredAsyncImageCards(key, currentList, [card]));
+        }
+      });
+      void Promise.allSettled([newest, ...unfinished]).then((results) => {
+        if (isCurrent() && results.some((result) => result.status === 'rejected')) {
+          console.warn('[useMessageLstCache] Could not reconcile all asynchronous image cards after reconnect');
+        }
+      });
+    });
+    return () => {
+      active = false;
+      unsubscribe();
+    };
+  }, [key, recoverAsyncImages, update]);
 
   useEffect(() => {
     if (!key) {
