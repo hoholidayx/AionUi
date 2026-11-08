@@ -94,6 +94,7 @@ export const useAssistantEditor = ({
   const [defaultThoughtLevelValue, setDefaultThoughtLevelValue] = useState('');
   const [defaultSkillsMode, setDefaultSkillsMode] = useState<AssistantSkillsDefaultMode>('fixed');
   const [defaultMcpMode, setDefaultMcpMode] = useState<AssistantMcpDefaultMode>('auto');
+  const [asyncImageEnabled, setAsyncImageEnabled] = useState<boolean>();
   const [availableMcpServers, setAvailableMcpServers] = useState<IMcpServer[]>([]);
   const [selectedMcpIds, setSelectedMcpIds] = useState<string[]>([]);
   const [isCreating, setIsCreating] = useState(false);
@@ -200,6 +201,7 @@ export const useAssistantEditor = ({
     setDefaultThoughtLevelValue('');
     setDefaultSkillsMode('fixed');
     setDefaultMcpMode('auto');
+    setAsyncImageEnabled(undefined);
     setSelectedMcpIds([]);
   }, []);
 
@@ -263,6 +265,7 @@ export const useAssistantEditor = ({
       setDefaultThoughtLevelValue(detail.defaults.thought_level.value || '');
       setDefaultSkillsMode(detail.defaults.skills.mode === 'auto' ? 'auto' : 'fixed');
       setDefaultMcpMode(detail.defaults.mcps.mode === 'fixed' ? 'fixed' : 'auto');
+      setAsyncImageEnabled(detail.defaults.async_image_enabled ?? true);
       setSelectedMcpIds(detail.defaults.mcps.value ?? []);
       setAvailableSkills(skillsList);
       setBuiltinAutoSkills(autoSkills);
@@ -293,6 +296,7 @@ export const useAssistantEditor = ({
     setEditAvatarPreview(undefined);
     setEditAgent('');
     resetDefaultConfigState();
+    setAsyncImageEnabled(true);
     resetSkillEditorState();
 
     try {
@@ -336,6 +340,7 @@ export const useAssistantEditor = ({
       setDefaultThoughtLevelValue(detail.defaults.thought_level.value || '');
       setDefaultSkillsMode(detail.defaults.skills.mode === 'auto' ? 'auto' : 'fixed');
       setDefaultMcpMode(detail.defaults.mcps.mode === 'fixed' ? 'fixed' : 'auto');
+      setAsyncImageEnabled(detail.defaults.async_image_enabled ?? true);
       setSelectedMcpIds(detail.defaults.mcps.value ?? []);
       setAvailableSkills(skillsList);
       setBuiltinAutoSkills(autoSkills);
@@ -432,7 +437,7 @@ export const useAssistantEditor = ({
         .split('\n')
         .map((prompt) => prompt.trim())
         .filter(Boolean);
-      const defaults = {
+      const scalarDefaults = {
         model:
           defaultModelMode === 'fixed'
             ? { mode: 'fixed', value: defaultModelValue.trim() }
@@ -445,6 +450,10 @@ export const useAssistantEditor = ({
           defaultThoughtLevelMode === 'fixed'
             ? { mode: 'fixed', value: defaultThoughtLevelValue.trim() }
             : { mode: defaultThoughtLevelMode },
+        async_image_enabled: asyncImageEnabled,
+      };
+      const defaults = {
+        ...scalarDefaults,
         skills: { mode: defaultSkillsMode, value: selectedSkills },
         mcps: { mode: defaultMcpMode, value: selectedMcpIds },
       };
@@ -475,20 +484,7 @@ export const useAssistantEditor = ({
           updateRequest = {
             id: activeAssistant.id,
             agent_id: editAgent || undefined,
-            defaults: {
-              model:
-                defaultModelMode === 'fixed'
-                  ? { mode: 'fixed', value: defaultModelValue.trim() }
-                  : { mode: defaultModelMode },
-              permission:
-                defaultPermissionMode === 'fixed'
-                  ? { mode: 'fixed', value: defaultPermissionValue.trim() }
-                  : { mode: defaultPermissionMode },
-              thought_level:
-                defaultThoughtLevelMode === 'fixed'
-                  ? { mode: 'fixed', value: defaultThoughtLevelValue.trim() }
-                  : { mode: defaultThoughtLevelMode },
-            },
+            defaults: scalarDefaults,
           };
         } else if (isGeneratedAssistant(activeAssistant)) {
           updateRequest = {
@@ -637,6 +633,8 @@ export const useAssistantEditor = ({
     setDefaultSkillsMode,
     defaultMcpMode,
     setDefaultMcpMode,
+    asyncImageEnabled,
+    setAsyncImageEnabled,
     availableMcpServers,
     selectedMcpIds,
     setSelectedMcpIds,

@@ -221,6 +221,7 @@
   "assistantIdentitySection": "身份",
   "assistantEngineSection": "引擎",
   "assistantDefaultConfigSection": "預設配置",
+  "assistantAsyncImageHint": "關閉後，該助理的模型將看不到非同步圖片生成工具。儲存後從下次傳送訊息起生效，也適用於既有對話。",
   "assistantDefaultSkillsLabel": "技能",
   "assistantOfficialManagedContent": "官方維護內容",
   "assistantManagedSkillsSummary": "內建規則與技能預設值會隨官方版本更新保持一致。",

@@ -221,6 +221,7 @@
   "assistantIdentitySection": "Identity",
   "assistantEngineSection": "Engine",
   "assistantDefaultConfigSection": "Default Configuration",
+  "assistantAsyncImageHint": "Turn this off to hide the image generation tool from this assistant. After saving, the change applies the next time you send a message, including in existing conversations.",
   "assistantDefaultSkillsLabel": "Skills",
   "assistantOfficialManagedContent": "Official Managed Content",
   "assistantManagedSkillsSummary": "Builtin rules and skill defaults stay aligned with official updates.",

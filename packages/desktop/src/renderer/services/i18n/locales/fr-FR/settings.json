@@ -221,6 +221,7 @@
   "assistantIdentitySection": "Identité",
   "assistantEngineSection": "Moteur",
   "assistantDefaultConfigSection": "Configuration par défaut",
+  "assistantAsyncImageHint": "Désactivez cette option pour masquer l’outil de génération d’images à cet assistant. Une fois enregistrée, la modification s’applique à votre prochain message, y compris dans les conversations existantes.",
   "assistantDefaultSkillsLabel": "Compétences",
   "assistantOfficialManagedContent": "Contenu géré officiel",
   "assistantManagedSkillsSummary": "Les règles intégrées et les compétences par défaut restent alignées sur les mises à jour officielles.",

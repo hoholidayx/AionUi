@@ -47,6 +47,7 @@ describe('AssistantEditorPage', () => {
       permission: { mode: 'auto', setMode: vi.fn(), value: '', setValue: vi.fn() },
       skills: { mode: 'auto', setMode: vi.fn() },
       mcps: { mode: 'auto', setMode: vi.fn(), availableServers: [], selectedIds: [], setSelectedIds: vi.fn() },
+      asyncImage: { enabled: true, setEnabled: vi.fn() },
     },
     rules: {
       content: '',

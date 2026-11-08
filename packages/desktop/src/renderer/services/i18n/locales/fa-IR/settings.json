@@ -221,6 +221,7 @@
   "assistantIdentitySection": "هویت",
   "assistantEngineSection": "موتور",
   "assistantDefaultConfigSection": "پیکربندی پیش‌فرض",
+  "assistantAsyncImageHint": "با خاموش کردن این گزینه، ابزار تولید تصویر از این دستیار پنهان می‌شود. پس از ذخیره، تغییر با ارسال پیام بعدی اعمال می‌شود، حتی در گفتگوهای موجود.",
   "assistantDefaultSkillsLabel": "مهارت‌ها",
   "assistantOfficialManagedContent": "محتوای مدیریت‌شده رسمی",
   "assistantManagedSkillsSummary": "قوانین داخلی و پیش‌فرض‌های مهارت با به‌روزرسانی‌های رسمی هماهنگ می‌مانند.",

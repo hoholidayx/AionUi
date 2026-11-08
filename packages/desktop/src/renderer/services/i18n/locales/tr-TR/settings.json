@@ -221,6 +221,7 @@
   "assistantIdentitySection": "Kimlik",
   "assistantEngineSection": "Motor",
   "assistantDefaultConfigSection": "Varsayılan Yapılandırma",
+  "assistantAsyncImageHint": "Görsel oluşturma aracını bu asistandan gizlemek için bu seçeneği kapatın. Kaydettikten sonra değişiklik, mevcut sohbetler dahil, bir sonraki mesajınızı gönderdiğinizde geçerli olur.",
   "assistantDefaultSkillsLabel": "Beceriler",
   "assistantOfficialManagedContent": "Resmi Olarak Yönetilen İçerik",
   "assistantManagedSkillsSummary": "Yerleşik kurallar ve varsayılan yetenekler resmi güncellemelerle uyumlu kalır.",

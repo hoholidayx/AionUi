@@ -113,6 +113,10 @@ export type AssistantEditorViewModel = {
       selectedIds: string[];
       setSelectedIds: (value: string[]) => void;
     };
+    asyncImage: {
+      enabled: boolean | undefined;
+      setEnabled: (value: boolean) => void;
+    };
   };
   rules: {
     content: string;

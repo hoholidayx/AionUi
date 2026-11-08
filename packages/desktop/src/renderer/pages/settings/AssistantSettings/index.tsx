@@ -13,9 +13,9 @@
  * | Prompt editing |  no     |  yes   |
  * | Delete         |  no     |  yes   |
  *
- * Builtin assistants only allow Main Agent plus default model / permission
- * overrides. The full-page editor still renders builtin skills and prompts as
- * read-only so users can inspect what's bundled.
+ * Builtin assistants allow Main Agent and overrides for the default model,
+ * permissions, thought level, and asynchronous image generation. The editor
+ * displays bundled skills and prompts as read-only.
  */
 import { Message } from '@arco-design/web-react';
 import { useAssistantEditor, useAssistantList } from '@/renderer/hooks/assistant';
@@ -156,6 +156,10 @@ const AssistantSettings: React.FC = () => {
         availableServers: editor.availableMcpServers,
         selectedIds: editor.selectedMcpIds,
         setSelectedIds: editor.setSelectedMcpIds,
+      },
+      asyncImage: {
+        enabled: editor.asyncImageEnabled,
+        setEnabled: editor.setAsyncImageEnabled,
       },
     },
     rules: {

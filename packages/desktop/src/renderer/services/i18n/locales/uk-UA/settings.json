@@ -229,6 +229,7 @@
   "assistantIdentitySection": "Ідентичність",
   "assistantEngineSection": "Рушій",
   "assistantDefaultConfigSection": "Конфігурація за замовчуванням",
+  "assistantAsyncImageHint": "Вимкніть цю опцію, щоб приховати інструмент створення зображень від цього помічника. Після збереження зміна набуде чинності, коли ви надішлете наступне повідомлення, зокрема в наявних розмовах.",
   "assistantDefaultSkillsLabel": "Навички",
   "assistantOfficialManagedContent": "Офіційно підтримуваний вміст",
   "assistantManagedSkillsSummary": "Вбудовані правила та значення навичок за замовчуванням узгоджуються з офіційними оновленнями.",

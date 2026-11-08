@@ -543,6 +543,7 @@ const AssistantEditorSections: React.FC<AssistantEditorSectionsProps> = ({ edito
         setDefaultSkillsMode={setDefaultSkillsMode}
         defaultMcpMode={defaultMcpMode}
         setDefaultMcpMode={setDefaultMcpMode}
+        asyncImage={editAgentRuntimeKey === 'aionrs' ? defaults.asyncImage : undefined}
         modelOptions={modelOptions}
         permissionOptions={permissionOptions}
         showThoughtLevelDefault={thoughtLevelOption !== null}

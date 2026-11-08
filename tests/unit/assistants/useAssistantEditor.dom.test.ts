@@ -183,6 +183,7 @@ describe('useAssistantEditor', () => {
     expect((result.current as any).defaultThoughtLevelValue).toBe('high');
     expect(result.current.defaultSkillsMode).toBe('auto');
     expect(result.current.defaultMcpMode).toBe('fixed');
+    expect(result.current.asyncImageEnabled).toBe(true);
     expect(result.current.selectedMcpIds).toEqual(['mcp-a']);
     expect(result.current.isCreating).toBe(false);
   });
@@ -370,6 +371,7 @@ describe('useAssistantEditor', () => {
           thought_level: { mode: 'fixed', value: 'high' },
           skills: { mode: 'auto', value: ['skill-one'] },
           mcps: { mode: 'fixed', value: ['mcp-a'] },
+          async_image_enabled: true,
         },
       })
     );
@@ -418,6 +420,35 @@ describe('useAssistantEditor', () => {
     expect(loadAssistantsMock).toHaveBeenCalled();
     expect(swrMutate).toHaveBeenCalledWith('assistants.list');
     expect(swrMutate).toHaveBeenCalledWith('guid.assistant.detail.a1.en');
+  });
+
+  it('persists a disabled asynchronous image setting for the edited assistant and reads it on reopening', async () => {
+    const assistant: AssistantListItem = {
+      id: 'a1',
+      name: 'Existing',
+      sort_order: 1,
+      source: 'user',
+      enabled: true,
+    };
+    const { result } = renderHook(() => useAssistantEditor({ ...defaultParams, activeAssistant: assistant }));
+
+    await act(() => result.current.handleEdit(assistant));
+    act(() => result.current.setAsyncImageEnabled(false));
+    await act(() => result.current.handleSave());
+
+    expect(ipcBridge.assistants.update.invoke).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: assistant.id,
+        defaults: expect.objectContaining({ async_image_enabled: false }),
+      })
+    );
+
+    (ipcBridge.assistants.get.invoke as any).mockResolvedValueOnce({
+      ...mockAssistantDetail,
+      defaults: { ...mockAssistantDetail.defaults, async_image_enabled: false },
+    });
+    await act(() => result.current.handleEdit(assistant));
+    expect(result.current.asyncImageEnabled).toBe(false);
   });
 
   it('clears model and permission defaults when the main agent changes', async () => {
@@ -510,6 +541,7 @@ describe('useAssistantEditor', () => {
       result.current.setEditRecommendedPromptsText('Should not be sent');
       result.current.setSelectedSkills(['skill-two']);
       result.current.setSelectedMcpIds(['mcp-b']);
+      result.current.setAsyncImageEnabled(false);
     });
 
     await act(async () => {
@@ -523,6 +555,7 @@ describe('useAssistantEditor', () => {
         model: { mode: 'fixed', value: 'gemini-2.5-pro' },
         permission: { mode: 'fixed', value: 'default' },
         thought_level: { mode: 'fixed', value: 'high' },
+        async_image_enabled: false,
       },
     });
   });

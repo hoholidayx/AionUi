@@ -103,7 +103,11 @@ const renderWithProviders = (ui: React.ReactElement) =>
     </MemoryRouter>
   );
 
-const createEditor = (overrides: Partial<AssistantEditorViewModel> = {}): AssistantEditorViewModel => {
+type EditorOverrides = Omit<Partial<AssistantEditorViewModel>, 'defaults'> & {
+  defaults?: Partial<AssistantEditorViewModel['defaults']>;
+};
+
+const createEditor = (overrides: EditorOverrides = {}): AssistantEditorViewModel => {
   const base: AssistantEditorViewModel = {
     isCreating: true,
     profile: {
@@ -131,6 +135,7 @@ const createEditor = (overrides: Partial<AssistantEditorViewModel> = {}): Assist
       thoughtLevel: { mode: 'auto', setMode: vi.fn(), value: '', setValue: vi.fn() },
       skills: { mode: 'fixed', setMode: vi.fn() },
       mcps: { mode: 'fixed', setMode: vi.fn(), availableServers: [], selectedIds: [], setSelectedIds: vi.fn() },
+      asyncImage: { enabled: true, setEnabled: vi.fn() },
     },
     rules: {
       content: 'rules',
@@ -487,6 +492,30 @@ describe('AssistantEditorSections', () => {
 
     expect(screen.getByTestId('select-assistant-default-model')).toHaveTextContent('Provider A · provider-model');
     expect(screen.getByTestId('select-assistant-default-model')).not.toHaveTextContent('Handshake Model');
+  });
+
+  it('offers an independent asynchronous image switch in the AionRS defaults', () => {
+    const setEnabled = vi.fn();
+    renderWithProviders(
+      <AssistantEditorSections
+        editor={createEditor({
+          agent: {
+            value: 'agent-aionrs',
+            setValue: vi.fn(),
+            availableBackends: [backendOption('agent-aionrs', 'aionrs')],
+          },
+          defaults: { asyncImage: { enabled: true, setEnabled } },
+        })}
+        activeAssistant={null}
+      />
+    );
+
+    const toggle = within(screen.getByTestId('assistant-card-defaults')).getByRole('switch', {
+      name: 'Asynchronous image generation',
+    });
+    expect(toggle).toBeChecked();
+    fireEvent.click(toggle);
+    expect(setEnabled).toHaveBeenCalledWith(false);
   });
 
   it('uses runtime config_options for default model options when assistant models are empty', () => {

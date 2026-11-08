@@ -229,6 +229,7 @@
   "assistantIdentitySection": "Идентичность",
   "assistantEngineSection": "Движок",
   "assistantDefaultConfigSection": "Настройки по умолчанию",
+  "assistantAsyncImageHint": "Отключите эту настройку, чтобы скрыть инструмент генерации изображений от этого помощника. После сохранения изменение вступит в силу при отправке следующего сообщения, в том числе в уже начатых беседах.",
   "assistantDefaultSkillsLabel": "Навыки",
   "assistantOfficialManagedContent": "Официально поддерживаемый контент",
   "assistantManagedSkillsSummary": "Встроенные правила и значения навыков по умолчанию синхронизируются с официальными обновлениями.",

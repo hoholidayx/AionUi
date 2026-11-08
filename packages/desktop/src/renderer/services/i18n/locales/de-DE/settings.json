@@ -221,6 +221,7 @@
   "assistantIdentitySection": "Identität",
   "assistantEngineSection": "Engine",
   "assistantDefaultConfigSection": "Standardkonfiguration",
+  "assistantAsyncImageHint": "Wenn du diese Option deaktivierst, steht diesem Assistenten das Werkzeug zur Bilderstellung nicht zur Verfügung. Nach dem Speichern gilt die Änderung ab deiner nächsten Nachricht, auch in bestehenden Unterhaltungen.",
   "assistantDefaultSkillsLabel": "Fähigkeiten",
   "assistantOfficialManagedContent": "Offiziell verwalteter Inhalt",
   "assistantManagedSkillsSummary": "Eingebaute Regeln und Standard-Skills bleiben mit offiziellen Updates synchronisiert.",

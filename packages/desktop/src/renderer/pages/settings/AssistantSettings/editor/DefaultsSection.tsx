@@ -1,8 +1,8 @@
-import type { BuiltinAutoSkill, SkillInfo } from '../types';
+import type { AssistantEditorViewModel } from '../types';
 import type { IMcpServer } from '@/common/config/storage';
 import { DROPDOWN_SEARCH_THRESHOLD } from '@/renderer/components/agent/runtimeSelectorOptions';
-import { Button, Select, Tooltip } from '@arco-design/web-react';
-import { Brain, Lightning, LinkCloud, Shield, Toolkit } from '@icon-park/react';
+import { Button, Select, Switch, Tooltip } from '@arco-design/web-react';
+import { Brain, Lightning, LinkCloud, Picture, Shield, Toolkit } from '@icon-park/react';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -55,6 +55,7 @@ type DefaultsSectionProps = {
   setDefaultSkillsMode: (value: 'auto' | 'fixed') => void;
   defaultMcpMode: 'auto' | 'fixed';
   setDefaultMcpMode: (value: 'auto' | 'fixed') => void;
+  asyncImage?: AssistantEditorViewModel['defaults']['asyncImage'];
   modelOptions: SelectOption[];
   permissionOptions: Array<{ value: string; label: string; description?: string }>;
   showThoughtLevelDefault: boolean;
@@ -91,6 +92,7 @@ const DefaultsSection: React.FC<DefaultsSectionProps> = ({
   setDefaultSkillsMode,
   defaultMcpMode,
   setDefaultMcpMode,
+  asyncImage,
   modelOptions,
   permissionOptions,
   showThoughtLevelDefault,
@@ -113,17 +115,17 @@ const DefaultsSection: React.FC<DefaultsSectionProps> = ({
     defaultThoughtLevelMode === 'fixed' &&
     defaultThoughtLevelValue &&
     thoughtLevelOptions.some((option) => option.value === defaultThoughtLevelValue);
+  const newConversationsOnly = t('settings.assistantOnlyNewConversation', { defaultValue: 'New conversations only' });
+  const asyncImageLabel = t('settings.mcpPurposeAsyncImage', { defaultValue: 'Asynchronous image generation' });
 
   return (
     <SectionCard
       title={t('settings.assistantDefaultConfigSection', { defaultValue: 'Default Configuration' })}
-      legend={{
-        label: t('settings.assistantOnlyNewConversation', { defaultValue: 'New conversations only' }),
-        tone: 'next',
-      }}
+      legend={asyncImage ? undefined : { label: newConversationsOnly, tone: 'next' }}
       testId='assistant-card-defaults'
     >
       <div className='space-y-16px'>
+        {asyncImage && <div className='text-11px text-t-tertiary'>{newConversationsOnly}</div>}
         <ConfigRow
           icon={<LinkCloud theme='outline' size='14' />}
           label={t('settings.assistantDefaultModelLabel', { defaultValue: 'Model' })}
@@ -496,6 +498,25 @@ const DefaultsSection: React.FC<DefaultsSectionProps> = ({
           )}
         </ConfigRow>
       </div>
+      {asyncImage && (
+        <div className='mt-16px border-t border-border-2 pt-16px'>
+          <ConfigRow
+            icon={<Picture theme='outline' size='14' />}
+            label={asyncImageLabel}
+            hint={t('settings.assistantAsyncImageHint', {
+              defaultValue:
+                'Turn this off to hide the image generation tool from this assistant. After saving, the change applies the next time you send a message, including in existing conversations.',
+            })}
+          >
+            <Switch
+              aria-label={asyncImageLabel}
+              checked={asyncImage.enabled ?? true}
+              disabled={asyncImage.enabled === undefined}
+              onChange={(enabled) => asyncImage.setEnabled(enabled)}
+            />
+          </ConfigRow>
+        </div>
+      )}
     </SectionCard>
   );
 };

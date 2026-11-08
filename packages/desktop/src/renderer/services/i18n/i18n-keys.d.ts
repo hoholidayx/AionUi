@@ -1685,6 +1685,7 @@ export type I18nKey =
   | 'settings.assistantAgentMissing'
   | 'settings.assistantAgentUnavailable'
   | 'settings.assistantAgentUnchecked'
+  | 'settings.assistantAsyncImageHint'
   | 'settings.assistantAvatarBuiltinTab'
   | 'settings.assistantAvatarEmojiTab'
   | 'settings.assistantAvatarImageFiles'

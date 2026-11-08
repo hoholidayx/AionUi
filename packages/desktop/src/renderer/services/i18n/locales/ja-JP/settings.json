@@ -221,6 +221,7 @@
   "assistantIdentitySection": "基本情報",
   "assistantEngineSection": "エンジン",
   "assistantDefaultConfigSection": "デフォルト設定",
+  "assistantAsyncImageHint": "オフにすると、このアシスタントに画像生成ツールが表示されなくなります。保存後は既存の会話でも、次にメッセージを送信するときから変更が適用されます。",
   "assistantDefaultSkillsLabel": "スキル",
   "assistantOfficialManagedContent": "公式管理コンテンツ",
   "assistantManagedSkillsSummary": "ビルトインのルールとスキル既定値は、公式アップデートに合わせて更新されます。",

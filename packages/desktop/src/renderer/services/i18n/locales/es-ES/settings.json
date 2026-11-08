@@ -220,6 +220,7 @@
   "assistantIdentitySection": "Identidad",
   "assistantEngineSection": "Motor",
   "assistantDefaultConfigSection": "Configuración predeterminada",
+  "assistantAsyncImageHint": "Desactiva esta opción para ocultar la herramienta de generación de imágenes a este asistente. Tras guardar, el cambio se aplica cuando envíes el siguiente mensaje, también en conversaciones existentes.",
   "assistantDefaultSkillsLabel": "Habilidades",
   "assistantOfficialManagedContent": "Contenido gestionado oficialmente",
   "assistantManagedSkillsSummary": "Las reglas integradas y los valores predeterminados de habilidades se mantienen alineados con las actualizaciones oficiales.",

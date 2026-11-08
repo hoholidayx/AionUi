@@ -98,6 +98,7 @@ export interface AssistantDefaults {
   thought_level: AssistantDefaultScalar;
   skills: AssistantDefaultList;
   mcps: AssistantDefaultList;
+  async_image_enabled?: boolean;
 }
 
 export interface AssistantDefaultsRequest {
@@ -106,6 +107,7 @@ export interface AssistantDefaultsRequest {
   thought_level?: AssistantDefaultScalar;
   skills?: AssistantDefaultList;
   mcps?: AssistantDefaultList;
+  async_image_enabled?: boolean;
 }
 
 export interface AssistantCapabilities {
