@@ -433,22 +433,26 @@ describe('useAssistantEditor', () => {
     const { result } = renderHook(() => useAssistantEditor({ ...defaultParams, activeAssistant: assistant }));
 
     await act(() => result.current.handleEdit(assistant));
-    act(() => result.current.setAsyncImageEnabled(false));
+    act(() => {
+      result.current.setAsyncImageEnabled(false);
+      result.current.setAsyncImageBackendIds([]);
+    });
     await act(() => result.current.handleSave());
 
     expect(ipcBridge.assistants.update.invoke).toHaveBeenCalledWith(
       expect.objectContaining({
         id: assistant.id,
-        defaults: expect.objectContaining({ async_image_enabled: false }),
+        defaults: expect.objectContaining({ async_image_enabled: false, async_image_backend_ids: [] }),
       })
     );
 
     (ipcBridge.assistants.get.invoke as any).mockResolvedValueOnce({
       ...mockAssistantDetail,
-      defaults: { ...mockAssistantDetail.defaults, async_image_enabled: false },
+      defaults: { ...mockAssistantDetail.defaults, async_image_enabled: false, async_image_backend_ids: [] },
     });
     await act(() => result.current.handleEdit(assistant));
     expect(result.current.asyncImageEnabled).toBe(false);
+    expect(result.current.asyncImageBackendIds).toEqual([]);
   });
 
   it('clears model and permission defaults when the main agent changes', async () => {

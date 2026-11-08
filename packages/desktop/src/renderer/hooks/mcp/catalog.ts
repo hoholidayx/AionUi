@@ -4,6 +4,9 @@ import { getClientBusinessSetting } from '@/renderer/services/clientBusinessSett
 
 export const IMAGE_BACKEND_CATALOG_KEY = 'mcp.image-backends';
 
+export const isEnabledImageBackend = (server: IMcpServer): boolean =>
+  server.enabled && !server.builtin && server.purpose === 'async_image';
+
 type BackendMcpTransport = Exclude<IMcpServerTransport, { type: 'streamable_http' }>;
 
 type BackendMcpPayload = {

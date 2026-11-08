@@ -95,6 +95,7 @@ export const useAssistantEditor = ({
   const [defaultSkillsMode, setDefaultSkillsMode] = useState<AssistantSkillsDefaultMode>('fixed');
   const [defaultMcpMode, setDefaultMcpMode] = useState<AssistantMcpDefaultMode>('auto');
   const [asyncImageEnabled, setAsyncImageEnabled] = useState<boolean>();
+  const [asyncImageBackendIds, setAsyncImageBackendIds] = useState<string[]>();
   const [availableMcpServers, setAvailableMcpServers] = useState<IMcpServer[]>([]);
   const [selectedMcpIds, setSelectedMcpIds] = useState<string[]>([]);
   const [isCreating, setIsCreating] = useState(false);
@@ -202,6 +203,7 @@ export const useAssistantEditor = ({
     setDefaultSkillsMode('fixed');
     setDefaultMcpMode('auto');
     setAsyncImageEnabled(undefined);
+    setAsyncImageBackendIds(undefined);
     setSelectedMcpIds([]);
   }, []);
 
@@ -266,6 +268,7 @@ export const useAssistantEditor = ({
       setDefaultSkillsMode(detail.defaults.skills.mode === 'auto' ? 'auto' : 'fixed');
       setDefaultMcpMode(detail.defaults.mcps.mode === 'fixed' ? 'fixed' : 'auto');
       setAsyncImageEnabled(detail.defaults.async_image_enabled ?? true);
+      setAsyncImageBackendIds(detail.defaults.async_image_backend_ids);
       setSelectedMcpIds(detail.defaults.mcps.value ?? []);
       setAvailableSkills(skillsList);
       setBuiltinAutoSkills(autoSkills);
@@ -341,6 +344,7 @@ export const useAssistantEditor = ({
       setDefaultSkillsMode(detail.defaults.skills.mode === 'auto' ? 'auto' : 'fixed');
       setDefaultMcpMode(detail.defaults.mcps.mode === 'fixed' ? 'fixed' : 'auto');
       setAsyncImageEnabled(detail.defaults.async_image_enabled ?? true);
+      setAsyncImageBackendIds(detail.defaults.async_image_backend_ids);
       setSelectedMcpIds(detail.defaults.mcps.value ?? []);
       setAvailableSkills(skillsList);
       setBuiltinAutoSkills(autoSkills);
@@ -451,11 +455,17 @@ export const useAssistantEditor = ({
             ? { mode: 'fixed', value: defaultThoughtLevelValue.trim() }
             : { mode: defaultThoughtLevelMode },
         async_image_enabled: asyncImageEnabled,
+        async_image_backend_ids: asyncImageBackendIds,
       };
       const defaults = {
         ...scalarDefaults,
         skills: { mode: defaultSkillsMode, value: selectedSkills },
-        mcps: { mode: defaultMcpMode, value: selectedMcpIds },
+        mcps: {
+          mode: defaultMcpMode,
+          value: selectedMcpIds.filter(
+            (id) => !availableMcpServers.some((server) => server.id === id && server.purpose === 'async_image')
+          ),
+        },
       };
 
       if (isCreating) {
@@ -635,6 +645,8 @@ export const useAssistantEditor = ({
     setDefaultMcpMode,
     asyncImageEnabled,
     setAsyncImageEnabled,
+    asyncImageBackendIds,
+    setAsyncImageBackendIds,
     availableMcpServers,
     selectedMcpIds,
     setSelectedMcpIds,

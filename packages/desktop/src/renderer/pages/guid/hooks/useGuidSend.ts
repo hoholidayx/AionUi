@@ -113,7 +113,10 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
     const assistantBackend = selectedAssistantBackend;
     const enabled_skills_to_send = guidEnabledSkills ?? assistantDefaultSkillIds;
     const excludeBuiltinSkills = guidDisabledBuiltinSkills ?? assistantDefaultDisabledBuiltinSkillIds;
-    const selectedAllMcpServerIds = selectedMcpServerIds ?? [];
+    const imageBackendIds = new Set(
+      availableMcpServers.filter((server) => server.purpose === 'async_image').map((server) => server.id)
+    );
+    const selectedAllMcpServerIds = (selectedMcpServerIds ?? []).filter((id) => !imageBackendIds.has(id));
     const selectedMcpServerIdSet = new Set(selectedAllMcpServerIds);
     const selectedUserMcpServerIds = availableMcpServers
       .filter((server) => selectedMcpServerIdSet.has(server.id) && server.builtin !== true)
@@ -126,7 +129,7 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
     const selectedSessionMcpServers = snapshotMcpServers
       .filter((server) => selectedMcpServerIdSet.has(server.id) && server.builtin === true)
       .map((server) => toSessionMcpServer(server));
-    const defaultSelectedMcpServerIds = assistantDefaultMcpIds;
+    const defaultSelectedMcpServerIds = assistantDefaultMcpIds?.filter((id) => !imageBackendIds.has(id));
     const defaultSelectedUserMcpServerIds = availableMcpServers
       .filter((server) => (defaultSelectedMcpServerIds ?? []).includes(server.id) && server.builtin !== true)
       .map((server) => server.id);

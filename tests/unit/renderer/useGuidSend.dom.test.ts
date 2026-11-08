@@ -175,7 +175,7 @@ describe('useGuidSend', () => {
     ['aionrs', false],
     ['claude', false],
   ] as const)(
-    'keeps the async MCP id without freezing its transport for %s (explicit selection %s)',
+    'excludes image-only MCP selections when creating a %s conversation (explicit selection %s)',
     async (backend, explicit) => {
       const deps = createDeps();
       const base = {
@@ -199,8 +199,9 @@ describe('useGuidSend', () => {
 
       await act(async () => result.current.handleSend());
 
-      const { extra } = createConversationInvokeMock.mock.calls[0][0];
-      expect(extra.selected_mcp_server_ids).toEqual(['image', 'general']);
+      const { assistant, extra } = createConversationInvokeMock.mock.calls[0][0];
+      expect(assistant?.conversation_overrides?.mcp_ids).toEqual(['general', 'builtin']);
+      expect(extra.selected_mcp_server_ids).toEqual(['general']);
       expect(extra.selected_session_mcp_servers).toEqual([
         expect.objectContaining({ id: 'general' }),
         expect.objectContaining({ id: 'builtin' }),

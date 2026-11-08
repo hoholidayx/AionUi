@@ -1,7 +1,8 @@
 import type { AssistantEditorViewModel } from '../types';
 import type { IMcpServer } from '@/common/config/storage';
 import { DROPDOWN_SEARCH_THRESHOLD } from '@/renderer/components/agent/runtimeSelectorOptions';
-import { Button, Select, Switch, Tooltip } from '@arco-design/web-react';
+import { Button, Checkbox, Select, Switch, Tooltip } from '@arco-design/web-react';
+import { isEnabledImageBackend } from '@/renderer/hooks/mcp/catalog';
 import { Brain, Lightning, LinkCloud, Picture, Shield, Toolkit } from '@icon-park/react';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
@@ -99,8 +100,8 @@ const DefaultsSection: React.FC<DefaultsSectionProps> = ({
   thoughtLevelOptions,
   editableSkillOptions,
   selectedSkillValues,
-  enabledMcpServers,
-  selectedMcpIds,
+  enabledMcpServers: mcpServers,
+  selectedMcpIds: storedMcpIds,
   setSelectedMcpIds,
   handleSkillSelectionChange,
   selectedItemsLabel,
@@ -117,6 +118,14 @@ const DefaultsSection: React.FC<DefaultsSectionProps> = ({
     thoughtLevelOptions.some((option) => option.value === defaultThoughtLevelValue);
   const newConversationsOnly = t('settings.assistantOnlyNewConversation', { defaultValue: 'New conversations only' });
   const asyncImageLabel = t('settings.mcpPurposeAsyncImage', { defaultValue: 'Asynchronous image generation' });
+  const enabledMcpServers = mcpServers.filter((server) => server.purpose !== 'async_image');
+  const selectedMcpIds = storedMcpIds.filter(
+    (id) => !mcpServers.some((server) => server.id === id && server.purpose === 'async_image')
+  );
+  const imageBackends = mcpServers.filter(isEnabledImageBackend);
+  const selectedImageIds = imageBackends
+    .filter((server) => asyncImage?.selectedIds?.includes(server.id) ?? true)
+    .map((server) => server.id);
 
   return (
     <SectionCard
@@ -515,6 +524,29 @@ const DefaultsSection: React.FC<DefaultsSectionProps> = ({
               onChange={(enabled) => asyncImage.setEnabled(enabled)}
             />
           </ConfigRow>
+          <div className='mt-16px space-y-8px'>
+            <div className='flex items-center justify-between text-13px'>
+              <span>{t('settings.assistantImageBackends', { defaultValue: 'Available image backends' })}</span>
+              <span className='text-t-tertiary'>{selectedItemsLabel(selectedImageIds.length)}</span>
+            </div>
+            {imageBackends.length > 0 ? (
+              <Checkbox.Group
+                className='!flex flex-col items-start gap-6px'
+                value={selectedImageIds}
+                disabled={asyncImage.enabled === undefined}
+                onChange={(ids) => asyncImage.setSelectedIds(ids.map(String))}
+              >
+                {imageBackends.map((server) => (
+                  <Checkbox key={server.id} value={server.id}>
+                    {server.name}
+                  </Checkbox>
+                ))}
+              </Checkbox.Group>
+            ) : (
+              <div className='text-12px text-t-tertiary'>{t('settings.assistantNoImageBackends')}</div>
+            )}
+            <div className='text-12px text-t-tertiary'>{t('settings.assistantImageBackendsEmptyHint')}</div>
+          </div>
         </div>
       )}
     </SectionCard>

@@ -82,7 +82,10 @@ const GuidPage: React.FC = () => {
   const [guidEnabledSkills, setGuidEnabledSkills] = useState<string[] | undefined>(undefined);
   const [availableMcpServers, setAvailableMcpServers] = useState<IMcpServer[]>([]);
   const [guidSelectedMcpServerIds, setGuidSelectedMcpServerIds] = useState<string[] | undefined>(undefined);
-  const [imageBackendId, setImageBackendId] = useState<string | null>(null);
+  const [imageBackendSelection, setImageBackendSelection] = useState<{
+    assistantId: string | null;
+    id: string | null;
+  }>();
 
   useEffect(() => {
     ipcBridge.fs.listAvailableSkills
@@ -174,6 +177,14 @@ const GuidPage: React.FC = () => {
     () => resolveGuidAssistantDefaults(selectedAssistantDetail),
     [selectedAssistantDetail]
   );
+  const allowedImageBackends = selectedAssistantDetail?.defaults.async_image_backend_ids;
+  const imageBackendId =
+    imageBackendSelection?.assistantId === selectedAssistantId &&
+    imageBackendSelection.id &&
+    selectedAssistantDetail?.defaults.async_image_enabled !== false &&
+    (allowedImageBackends?.includes(imageBackendSelection.id) ?? true)
+      ? imageBackendSelection.id
+      : null;
   const selectedSkillNames = useMemo(() => {
     const disabledBuiltinSkillSet = new Set(
       guidDisabledBuiltinSkills ?? resolvedAssistantDefaults.disabledBuiltinSkillIds
@@ -638,12 +649,17 @@ const GuidPage: React.FC = () => {
       disabledBuiltinSkills={guidDisabledBuiltinSkills ?? []}
       enabledSkills={guidEnabledSkills ?? []}
       onToggleSkill={handleToggleSkill}
-      mcpServers={availableMcpServers}
+      mcpServers={availableMcpServers.filter((server) => server.purpose !== 'async_image')}
       selectedMcpServerIds={guidSelectedMcpServerIds ?? []}
       onToggleMcpServer={handleToggleMcpServer}
       imageBackendSelector={
         agentSelection.selectedAssistantBackend === 'aionrs' ? (
-          <ImageBackendSelector value={imageBackendId} onChange={setImageBackendId} disabled={guidInput.loading} />
+          <ImageBackendSelector
+            value={imageBackendId}
+            assistantId={selectedAssistantId}
+            onChange={(id) => setImageBackendSelection({ assistantId: selectedAssistantId, id })}
+            disabled={guidInput.loading}
+          />
         ) : undefined
       }
       speechInputNode={

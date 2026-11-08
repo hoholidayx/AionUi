@@ -5,6 +5,7 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import { MemoryRouter } from 'react-router-dom';
 import AssistantEditorSections from '@/renderer/pages/settings/AssistantSettings/AssistantEditorSections';
 import type { AssistantEditorViewModel } from '@/renderer/pages/settings/AssistantSettings/types';
+import type { IMcpServer } from '@/common/config/storage';
 
 const mockUseModelProviderList = vi.fn(() => ({
   providers: [],
@@ -135,7 +136,7 @@ const createEditor = (overrides: EditorOverrides = {}): AssistantEditorViewModel
       thoughtLevel: { mode: 'auto', setMode: vi.fn(), value: '', setValue: vi.fn() },
       skills: { mode: 'fixed', setMode: vi.fn() },
       mcps: { mode: 'fixed', setMode: vi.fn(), availableServers: [], selectedIds: [], setSelectedIds: vi.fn() },
-      asyncImage: { enabled: true, setEnabled: vi.fn() },
+      asyncImage: { enabled: true, setEnabled: vi.fn(), selectedIds: undefined, setSelectedIds: vi.fn() },
     },
     rules: {
       content: 'rules',
@@ -504,7 +505,7 @@ describe('AssistantEditorSections', () => {
             setValue: vi.fn(),
             availableBackends: [backendOption('agent-aionrs', 'aionrs')],
           },
-          defaults: { asyncImage: { enabled: true, setEnabled } },
+          defaults: { asyncImage: { enabled: true, setEnabled, selectedIds: undefined, setSelectedIds: vi.fn() } },
         })}
         activeAssistant={null}
       />
@@ -516,6 +517,49 @@ describe('AssistantEditorSections', () => {
     expect(toggle).toBeChecked();
     fireEvent.click(toggle);
     expect(setEnabled).toHaveBeenCalledWith(false);
+  });
+
+  it('prechecks image backends for an old assistant and keeps them out of the general MCP picker', async () => {
+    const setSelectedIds = vi.fn();
+    const server = (id: string, name: string, purpose: IMcpServer['purpose']): IMcpServer => ({
+      id,
+      name,
+      purpose,
+      enabled: true,
+      transport: { type: 'http', url: 'http://localhost:9000/mcp' },
+      original_json: '{}',
+      created_at: 0,
+      updated_at: 0,
+    });
+    const editor = createEditor({
+      agent: {
+        value: 'agent-aionrs',
+        setValue: vi.fn(),
+        availableBackends: [backendOption('agent-aionrs', 'aionrs')],
+      },
+      defaults: {
+        mcps: {
+          mode: 'auto',
+          setMode: vi.fn(),
+          availableServers: [
+            server('image', 'Fixture Image', 'async_image'),
+            server('general', 'Fixture Tools', 'general'),
+          ],
+          selectedIds: [],
+          setSelectedIds: vi.fn(),
+        },
+        asyncImage: { enabled: true, setEnabled: vi.fn(), selectedIds: undefined, setSelectedIds },
+      },
+    });
+    renderWithProviders(<AssistantEditorSections editor={editor} activeAssistant={null} />);
+
+    const checkbox = screen.getByRole('checkbox', { name: 'Fixture Image' });
+    expect(checkbox).toBeChecked();
+    fireEvent.click(checkbox);
+    expect(setSelectedIds).toHaveBeenCalledWith([]);
+    fireEvent.click(screen.getByTestId('select-assistant-default-mcp'));
+    expect(await screen.findByRole('option', { name: 'Fixture Tools' })).toBeInTheDocument();
+    expect(screen.queryByRole('option', { name: 'Fixture Image' })).not.toBeInTheDocument();
   });
 
   it('uses runtime config_options for default model options when assistant models are empty', () => {

@@ -117,6 +117,8 @@ describe('AssistantSettings', () => {
       setDefaultMcpMode: vi.fn(),
       asyncImageEnabled: true,
       setAsyncImageEnabled: vi.fn(),
+      asyncImageBackendIds: undefined,
+      setAsyncImageBackendIds: vi.fn(),
       availableMcpServers: [],
       selectedMcpIds: [],
       setSelectedMcpIds: vi.fn(),

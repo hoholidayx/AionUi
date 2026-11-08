@@ -160,6 +160,8 @@ const AssistantSettings: React.FC = () => {
       asyncImage: {
         enabled: editor.asyncImageEnabled,
         setEnabled: editor.setAsyncImageEnabled,
+        selectedIds: editor.asyncImageBackendIds,
+        setSelectedIds: editor.setAsyncImageBackendIds,
       },
     },
     rules: {

@@ -753,6 +753,7 @@ const AionrsSendBox: React.FC<{
   const imageBackendSelector = !teamRuntime && (
     <ImageBackendSelector
       value={imageBackendId}
+      assistantId={conversationContext?.assistantId}
       disabled={savingImageBackend || isBusy}
       onChange={(id) => void changeImageBackend(id)}
     />

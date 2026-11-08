@@ -99,6 +99,7 @@ export interface AssistantDefaults {
   skills: AssistantDefaultList;
   mcps: AssistantDefaultList;
   async_image_enabled?: boolean;
+  async_image_backend_ids?: string[];
 }
 
 export interface AssistantDefaultsRequest {
@@ -108,6 +109,7 @@ export interface AssistantDefaultsRequest {
   skills?: AssistantDefaultList;
   mcps?: AssistantDefaultList;
   async_image_enabled?: boolean;
+  async_image_backend_ids?: string[];
 }
 
 export interface AssistantCapabilities {
