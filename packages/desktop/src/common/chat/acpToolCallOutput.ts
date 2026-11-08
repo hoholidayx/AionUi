@@ -87,7 +87,9 @@ export const getAcpImagePath = (update: ToolCallUpdate['update']): string | unde
 export const getAcpImageFileName = (path: string): string => path.split(/[/\\]/).pop() || 'generated-image.png';
 
 export const getAcpAsyncImage = (update?: ToolCallUpdate['update']): AsyncImageOutput | undefined => {
-  const output = update?.raw_output?.async_image ?? update?.rawOutput?.async_image;
+  if (typeof update?.tool_call_id !== 'string' || !update.tool_call_id.startsWith('async-image:')) return undefined;
+
+  const output = update.raw_output?.async_image ?? update.rawOutput?.async_image;
   return output && typeof output === 'object' && !Array.isArray(output) ? output : undefined;
 };
 

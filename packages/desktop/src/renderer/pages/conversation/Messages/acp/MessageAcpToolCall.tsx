@@ -198,9 +198,6 @@ const MessageAcpToolCall: React.FC<{ message: IMessageAcpToolCall }> = ({ messag
               ))}
             </div>
           )}
-          {status === 'failed' && typeof asyncOutput?.error_code === 'string' && (
-            <div className='text-xs text-t-secondary mt-2'>{asyncOutput.error_code}</div>
-          )}
           {!asyncOutput && <div className='text-xs text-t-secondary mt-2'>Tool Call ID: {tool_call_id}</div>}
         </div>
       </div>

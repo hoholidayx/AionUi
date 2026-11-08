@@ -486,6 +486,18 @@ describe('MessageList', () => {
     expect(screen.queryByTestId('acp-tool-call')).not.toBeInTheDocument();
   });
 
+  it('keeps ordinary tool output with an async_image field in View Steps', () => {
+    const message = createAcpToolCall({ id: 'mcp-tool-1' });
+    message.content.update.raw_output = { async_image: { attachment_id: 'provider-result' } };
+
+    render(<MessageList />, {
+      wrapper: ({ children }) => <Wrapper messages={[message]}>{children}</Wrapper>,
+    });
+
+    expect(screen.getByTestId('tool-summary')).toHaveTextContent('mcp-tool-1');
+    expect(screen.queryByTestId('acp-tool-call')).not.toBeInTheDocument();
+  });
+
   it('keeps a single standalone image card through duplicate and older updates', async () => {
     const id = 'async-image:job-1';
     const pending = createAcpToolCall({ id, status: 'pending' });

@@ -109,6 +109,8 @@ const baseUpdate: IMessageAcpToolCall['content']['update'] = {
   kind: 'execute',
 };
 
+const asyncImageUpdate = { ...baseUpdate, tool_call_id: 'async-image:attachment-1' };
+
 describe('MessageAcpToolCall image output', () => {
   beforeEach(() => {
     mockDownloadFileFromPath.mockReset();
@@ -157,7 +159,7 @@ describe('MessageAcpToolCall image output', () => {
   it('updates a pending asynchronous card to an attachment scoped to its original conversation', async () => {
     const { rerender } = render(
       <MessageAcpToolCall
-        message={createMessage({ ...baseUpdate, status: 'pending', raw_output: { async_image: {} } })}
+        message={createMessage({ ...asyncImageUpdate, status: 'pending', raw_output: { async_image: {} } })}
       />
     );
 
@@ -168,7 +170,7 @@ describe('MessageAcpToolCall image output', () => {
 
     rerender(
       <MessageAcpToolCall
-        message={createMessage({ ...baseUpdate, raw_output: { async_image: { attachment_id: 'attachment-1' } } })}
+        message={createMessage({ ...asyncImageUpdate, raw_output: { async_image: { attachment_id: 'attachment-1' } } })}
       />
     );
 
@@ -186,11 +188,11 @@ describe('MessageAcpToolCall image output', () => {
     expect(mockDownloadFileFromPath).not.toHaveBeenCalled();
   });
 
-  it('shows a generic failed card without an image or the provider output', () => {
+  it('shows a translated failed card without an image or backend details', () => {
     render(
       <MessageAcpToolCall
         message={createMessage({
-          ...baseUpdate,
+          ...asyncImageUpdate,
           status: 'failed',
           raw_output: { async_image: { error_code: 'provider_unavailable' } },
           rawInput: { provider: 'private-provider' },
@@ -199,7 +201,7 @@ describe('MessageAcpToolCall image output', () => {
     );
 
     expect(screen.getByText('common.failed')).toBeInTheDocument();
-    expect(screen.getByText('provider_unavailable')).toBeInTheDocument();
+    expect(screen.queryByText('provider_unavailable')).not.toBeInTheDocument();
     expect(screen.queryByText(/private-provider/)).not.toBeInTheDocument();
     expect(screen.queryByTestId('local-image')).not.toBeInTheDocument();
   });
