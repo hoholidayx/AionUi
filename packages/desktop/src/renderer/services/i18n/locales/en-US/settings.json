@@ -235,6 +235,7 @@
   "assistantNoMatchingAgent": "No matching agents",
   "assistantEffectiveImmediately": "Applies immediately",
   "assistantOnlyNewConversation": "New conversations only",
+  "assistantAppliesNextTurn": "Applies to existing AionRS chats on the next turn",
   "assistantDefaultModelLabel": "Model",
   "assistantDefaultPermissionLabel": "Permission",
   "assistantDefaultThoughtLevelLabel": "Thought Level",

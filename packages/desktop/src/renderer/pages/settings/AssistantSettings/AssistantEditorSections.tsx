@@ -544,6 +544,7 @@ const AssistantEditorSections: React.FC<AssistantEditorSectionsProps> = ({ edito
         defaultMcpMode={defaultMcpMode}
         setDefaultMcpMode={setDefaultMcpMode}
         asyncImage={editAgentRuntimeKey === 'aionrs' ? defaults.asyncImage : undefined}
+        appliesNextTurn={editAgentRuntimeKey === 'aionrs'}
         mem0Memory={defaults.mem0Memory}
         supportsMem0Memory={editAgentRuntimeKey === 'aionrs'}
         modelOptions={modelOptions}
@@ -562,6 +563,7 @@ const AssistantEditorSections: React.FC<AssistantEditorSectionsProps> = ({ edito
       />
 
       <RulesSection
+        appliesNextTurn={editAgentRuntimeKey === 'aionrs'}
         isReadOnly={isReadOnlyAssistant}
         promptViewMode={promptViewMode}
         setPromptViewMode={setPromptViewMode}

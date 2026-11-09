@@ -235,6 +235,7 @@
   "assistantNoMatchingAgent": "一致するエージェントがありません",
   "assistantEffectiveImmediately": "変更はすぐ反映",
   "assistantOnlyNewConversation": "新しい会話にのみ適用",
+  "assistantAppliesNextTurn": "既存の AionRS チャットでは次のターンから適用",
   "assistantDefaultModelLabel": "モデル",
   "assistantDefaultPermissionLabel": "権限",
   "assistantDefaultThoughtLevelLabel": "思考レベル",

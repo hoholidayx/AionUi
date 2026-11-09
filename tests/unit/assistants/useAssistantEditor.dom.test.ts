@@ -459,6 +459,40 @@ describe('useAssistantEditor', () => {
     expect(result.current.asyncImageBackendIds).toEqual([]);
   });
 
+  it.each([
+    ['Updated rule', { kind: 'write', locale: 'en', content: 'Updated rule' }],
+    ['  ', { kind: 'clear' }],
+  ])('saves the rule and defaults together for rule input %j', async (content, rule) => {
+    const assistant: AssistantListItem = { id: 'a1', name: 'Existing', sort_order: 1, source: 'user', enabled: true };
+    const { result } = renderHook(() => useAssistantEditor({ ...defaultParams, activeAssistant: assistant }));
+
+    await act(() => result.current.handleEdit(assistant));
+    act(() => result.current.setEditContext(content));
+    await act(() => result.current.handleSave());
+
+    expect(ipcBridge.assistants.update.invoke).toHaveBeenCalledWith(
+      expect.objectContaining({ id: assistant.id, rules: rule, defaults: expect.any(Object) })
+    );
+    expect(ipcBridge.fs.writeAssistantRule.invoke).not.toHaveBeenCalled();
+    expect(ipcBridge.fs.deleteAssistantRule.invoke).not.toHaveBeenCalled();
+  });
+
+  it('keeps the rule draft visible when the combined save fails', async () => {
+    const errorLog = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const assistant: AssistantListItem = { id: 'a1', name: 'Existing', sort_order: 1, source: 'user', enabled: true };
+    vi.mocked(ipcBridge.assistants.update.invoke).mockRejectedValueOnce(new Error('Publication failed'));
+    const { result } = renderHook(() => useAssistantEditor({ ...defaultParams, activeAssistant: assistant }));
+
+    await act(() => result.current.handleEdit(assistant));
+    act(() => result.current.setEditContext('Draft rule'));
+    await act(() => result.current.handleSave());
+
+    expect(result.current.editVisible).toBe(true);
+    expect(result.current.editContext).toBe('Draft rule');
+    expect(mockMessage.success).not.toHaveBeenCalled();
+    errorLog.mockRestore();
+  });
+
   it.each([false, true])('sends only the Mem0 opt-in choice when saving %s', async (enabled) => {
     const assistant: AssistantListItem = { id: 'a1', name: 'Existing', sort_order: 1, source: 'user', enabled: true };
     vi.mocked(ipcBridge.assistants.get.invoke).mockResolvedValueOnce({

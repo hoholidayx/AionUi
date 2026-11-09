@@ -235,6 +235,7 @@
   "assistantNoMatchingAgent": "Nenhum agente correspondente",
   "assistantEffectiveImmediately": "Aplica imediatamente",
   "assistantOnlyNewConversation": "Somente para novas conversas",
+  "assistantAppliesNextTurn": "Aplica-se às conversas AionRS existentes no próximo turno",
   "assistantDefaultModelLabel": "Modelo",
   "assistantDefaultPermissionLabel": "Permissão",
   "assistantDefaultThoughtLevelLabel": "Nível de Raciocínio",

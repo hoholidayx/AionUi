@@ -235,6 +235,7 @@
   "assistantNoMatchingAgent": "Keine passenden Agents",
   "assistantEffectiveImmediately": "Gilt sofort",
   "assistantOnlyNewConversation": "Nur neue Gespräche",
+  "assistantAppliesNextTurn": "Gilt in bestehenden AionRS-Chats ab dem nächsten Zug",
   "assistantDefaultModelLabel": "Modell",
   "assistantDefaultPermissionLabel": "Berechtigung",
   "assistantDefaultThoughtLevelLabel": "Denkintensität",

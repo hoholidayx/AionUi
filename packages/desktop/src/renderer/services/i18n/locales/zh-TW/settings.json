@@ -235,6 +235,7 @@
   "assistantNoMatchingAgent": "沒有符合的 Agent",
   "assistantEffectiveImmediately": "改動立即生效",
   "assistantOnlyNewConversation": "僅對新會話生效",
+  "assistantAppliesNextTurn": "現有 AionRS 工作階段下一輪生效",
   "assistantDefaultModelLabel": "模型",
   "assistantDefaultPermissionLabel": "權限",
   "assistantDefaultThoughtLevelLabel": "思考強度",

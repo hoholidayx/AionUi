@@ -168,6 +168,43 @@ describe('useGuidSend', () => {
     expect(payload.extra.selected_mcp_server_ids).toEqual(['mcp-user']);
   });
 
+  it('does not mark inherited AionRS selections as runtime overrides', async () => {
+    const deps = {
+      ...createDeps(),
+      selectedAssistantBackend: 'aionrs',
+      current_model: { use_model: 'example-model' } as TProviderWithModel,
+      selectedMcpServerIds: undefined,
+      assistantDefaultSkillIds: ['assistant-skill'],
+      assistantDefaultMcpIds: ['mcp-user'],
+    };
+    const { result } = renderHook(() => useGuidSend(deps));
+
+    await act(() => result.current.handleSend());
+
+    const { assistant, extra } = createConversationInvokeMock.mock.calls[0][0];
+    expect(assistant).not.toHaveProperty('runtime_overrides');
+    expect(assistant.conversation_overrides).not.toHaveProperty('skill_ids');
+    expect(assistant.conversation_overrides).not.toHaveProperty('mcp_ids');
+    expect(extra).not.toHaveProperty('selected_session_mcp_servers');
+  });
+
+  it('keeps explicit empty AionRS selections and tracks each override independently', async () => {
+    const deps = {
+      ...createDeps(),
+      selectedAssistantBackend: 'aionrs',
+      current_model: { use_model: 'example-model' } as TProviderWithModel,
+      guidEnabledSkills: [],
+      selectedMcpServerIds: [],
+      assistantDefaultDisabledBuiltinSkillIds: ['assistant-exclusion'],
+    };
+    const { result } = renderHook(() => useGuidSend(deps));
+
+    await act(() => result.current.handleSend());
+
+    const { assistant } = createConversationInvokeMock.mock.calls[0][0];
+    expect(assistant.runtime_overrides).toEqual({ skill_ids: [], mcp_ids: [] });
+  });
+
   it('preserves builtin MCP ids in assistant overrides while only sending user MCP ids to runtime selection', async () => {
     const deps = createDeps();
     deps.availableMcpServers = [
@@ -190,7 +227,6 @@ describe('useGuidSend', () => {
 
   it.each([
     ['aionrs', true],
-    ['aionrs', false],
     ['claude', false],
   ] as const)(
     'excludes image-only MCP selections when creating a %s conversation (explicit selection %s)',

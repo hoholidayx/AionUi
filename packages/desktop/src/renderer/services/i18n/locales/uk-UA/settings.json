@@ -243,6 +243,7 @@
   "assistantNoMatchingAgent": "Немає відповідних агентів",
   "assistantEffectiveImmediately": "Зміни застосовуються одразу",
   "assistantOnlyNewConversation": "Лише для нових чатів",
+  "assistantAppliesNextTurn": "Діє в наявних чатах AionRS із наступного ходу",
   "assistantDefaultModelLabel": "Модель",
   "assistantDefaultPermissionLabel": "Дозвіл",
   "assistantDefaultThoughtLevelLabel": "Рівень мислення",

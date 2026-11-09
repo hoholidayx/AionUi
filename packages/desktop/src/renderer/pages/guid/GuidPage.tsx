@@ -112,27 +112,6 @@ const GuidPage: React.FC = () => {
       });
   }, []);
 
-  const handleToggleSkill = useCallback((skillName: string, isAuto: boolean) => {
-    if (isAuto) {
-      setGuidDisabledBuiltinSkills((prev) => {
-        const list = prev ?? [];
-        return list.includes(skillName) ? list.filter((s) => s !== skillName) : [...list, skillName];
-      });
-    } else {
-      setGuidEnabledSkills((prev) => {
-        const list = prev ?? [];
-        return list.includes(skillName) ? list.filter((s) => s !== skillName) : [...list, skillName];
-      });
-    }
-  }, []);
-
-  const handleToggleMcpServer = useCallback((serverId: string) => {
-    setGuidSelectedMcpServerIds((prev) => {
-      const current = prev ?? [];
-      return current.includes(serverId) ? current.filter((id) => id !== serverId) : [...current, serverId];
-    });
-  }, []);
-
   // --- Hooks ---
   // Only aionrs uses this provider-based model picker now (Gemini runs as a
   // regular ACP backend with its own model selector).
@@ -174,6 +153,34 @@ const GuidPage: React.FC = () => {
   const resolvedAssistantDefaults = useMemo(
     () => resolveGuidAssistantDefaults(selectedAssistantDetail),
     [selectedAssistantDetail]
+  );
+  // Keep inherited defaults separate from explicit selections for this conversation.
+  useLayoutEffect(() => {
+    setGuidDisabledBuiltinSkills(undefined);
+    setGuidEnabledSkills(undefined);
+    setGuidSelectedMcpServerIds(undefined);
+  }, [selectedAssistantId]);
+
+  const handleToggleSkill = useCallback(
+    (skillName: string, isAuto: boolean) => {
+      const setSelection = isAuto ? setGuidDisabledBuiltinSkills : setGuidEnabledSkills;
+      const defaults = isAuto ? resolvedAssistantDefaults.disabledBuiltinSkillIds : resolvedAssistantDefaults.skillIds;
+      setSelection((previous) => {
+        const current = previous ?? defaults;
+        return current.includes(skillName) ? current.filter((name) => name !== skillName) : [...current, skillName];
+      });
+    },
+    [resolvedAssistantDefaults.disabledBuiltinSkillIds, resolvedAssistantDefaults.skillIds]
+  );
+
+  const handleToggleMcpServer = useCallback(
+    (serverId: string) => {
+      setGuidSelectedMcpServerIds((previous) => {
+        const current = previous ?? resolvedAssistantDefaults.mcpIds;
+        return current.includes(serverId) ? current.filter((id) => id !== serverId) : [...current, serverId];
+      });
+    },
+    [resolvedAssistantDefaults.mcpIds]
   );
   const selectedImageBackendId =
     imageBackendSelection?.assistantId === selectedAssistantId ? imageBackendSelection.id : null;
@@ -359,19 +366,6 @@ const GuidPage: React.FC = () => {
     return [t('guid.defaultPrompts.understand'), t('guid.defaultPrompts.cleanup'), t('guid.defaultPrompts.create')];
   }, [localeKey, selectedAssistantDetail, selectedAssistantRecord, selectedAssistantId, t]);
 
-  // Sync disabledBuiltinSkills + enabledSkills from assistant detail defaults.
-  useEffect(() => {
-    if (!selectedAssistantId || !selectedAssistantDetail) {
-      setGuidDisabledBuiltinSkills(undefined);
-      setGuidEnabledSkills(undefined);
-      return;
-    }
-
-    const resolvedDefaults = resolveGuidAssistantDefaults(selectedAssistantDetail);
-    setGuidDisabledBuiltinSkills(resolvedDefaults.disabledBuiltinSkillIds);
-    setGuidEnabledSkills(resolvedDefaults.skillIds);
-  }, [selectedAssistantDetail, selectedAssistantId]);
-
   const appliedAssistantDefaultsKeyRef = useRef<string | null>(null);
   const manualModelSelectionAssistantRef = useRef<string | null>(null);
   const manualThoughtLevelSelectionAssistantRef = useRef<string | null>(null);
@@ -468,7 +462,6 @@ const GuidPage: React.FC = () => {
           agentSelection.setSelectedThoughtLevelValue(fallbackThoughtLevel, { persistPreference: false });
         }
       }
-      setGuidSelectedMcpServerIds(resolvedDefaults.mcpIds);
     };
 
     void applyAssistantDefaults().catch((error) => {
@@ -646,11 +639,11 @@ const GuidPage: React.FC = () => {
       dynamicModes={agentSelection.currentAgentModeOptions}
       onModeSelect={setGuidSelectedMode}
       allSkills={allSkills}
-      disabledBuiltinSkills={guidDisabledBuiltinSkills ?? []}
-      enabledSkills={guidEnabledSkills ?? []}
+      disabledBuiltinSkills={guidDisabledBuiltinSkills ?? resolvedAssistantDefaults.disabledBuiltinSkillIds}
+      enabledSkills={guidEnabledSkills ?? resolvedAssistantDefaults.skillIds}
       onToggleSkill={handleToggleSkill}
       mcpServers={availableMcpServers.filter((server) => server.purpose !== 'async_image')}
-      selectedMcpServerIds={guidSelectedMcpServerIds ?? []}
+      selectedMcpServerIds={guidSelectedMcpServerIds ?? resolvedAssistantDefaults.mcpIds}
       onToggleMcpServer={handleToggleMcpServer}
       imageBackendMenu={
         agentSelection.selectedAssistantBackend === 'aionrs'

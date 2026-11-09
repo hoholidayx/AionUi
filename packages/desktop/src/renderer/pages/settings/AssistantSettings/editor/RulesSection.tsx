@@ -6,6 +6,7 @@ import { SectionCard } from './editorSectionPrimitives';
 
 type RulesSectionProps = {
   isReadOnly: boolean;
+  appliesNextTurn: boolean;
   promptViewMode: 'edit' | 'preview';
   setPromptViewMode: (value: 'edit' | 'preview') => void;
   rulesExpanded: boolean;
@@ -18,6 +19,7 @@ type RulesSectionProps = {
 
 const RulesSection: React.FC<RulesSectionProps> = ({
   isReadOnly,
+  appliesNextTurn,
   promptViewMode,
   setPromptViewMode,
   rulesExpanded,
@@ -34,7 +36,10 @@ const RulesSection: React.FC<RulesSectionProps> = ({
     <SectionCard
       title={t('settings.assistantRules', { defaultValue: 'Rules' })}
       legend={{
-        label: t('settings.assistantOnlyNewConversation', { defaultValue: 'New conversations only' }),
+        label:
+          appliesNextTurn && isRuleEditable
+            ? t('settings.assistantAppliesNextTurn')
+            : t('settings.assistantOnlyNewConversation', { defaultValue: 'New conversations only' }),
         tone: 'next',
       }}
       readOnlyLabel={readOnlyLabel}

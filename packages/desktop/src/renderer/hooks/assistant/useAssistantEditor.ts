@@ -533,11 +533,12 @@ export const useAssistantEditor = ({
             defaults,
           };
         }
-        await ipcBridge.assistants.update.invoke(updateRequest);
-
         if (!isBuiltinAssistant(activeAssistant)) {
-          await persistAssistantRules(activeAssistant.id, editContext);
+          updateRequest.rules = editContext.trim()
+            ? { kind: 'write', locale: localeKey, content: editContext }
+            : { kind: 'clear' };
         }
+        await ipcBridge.assistants.update.invoke(updateRequest);
 
         await refreshAssistantCatalog();
         await refreshAssistantDetailCaches(activeAssistant.id);

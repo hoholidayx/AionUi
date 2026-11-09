@@ -57,6 +57,7 @@ type DefaultsSectionProps = {
   defaultMcpMode: 'auto' | 'fixed';
   setDefaultMcpMode: (value: 'auto' | 'fixed') => void;
   asyncImage?: AssistantEditorViewModel['defaults']['asyncImage'];
+  appliesNextTurn: boolean;
   mem0Memory?: AssistantEditorViewModel['defaults']['mem0Memory'];
   supportsMem0Memory: boolean;
   modelOptions: SelectOption[];
@@ -96,6 +97,7 @@ const DefaultsSection: React.FC<DefaultsSectionProps> = ({
   defaultMcpMode,
   setDefaultMcpMode,
   asyncImage,
+  appliesNextTurn,
   mem0Memory,
   supportsMem0Memory,
   modelOptions,
@@ -121,6 +123,8 @@ const DefaultsSection: React.FC<DefaultsSectionProps> = ({
     defaultThoughtLevelValue &&
     thoughtLevelOptions.some((option) => option.value === defaultThoughtLevelValue);
   const newConversationsOnly = t('settings.assistantOnlyNewConversation', { defaultValue: 'New conversations only' });
+  const nextTurnHint =
+    appliesNextTurn && canEditDefaultSkillsAndMcps ? t('settings.assistantAppliesNextTurn') : undefined;
   const asyncImageLabel = t('settings.mcpPurposeAsyncImage', { defaultValue: 'Asynchronous image generation' });
   const mem0MemoryLabel = t('settings.assistantMem0Memory');
   const canEnableMem0Memory = supportsMem0Memory && mem0Memory?.configured === true;
@@ -136,18 +140,22 @@ const DefaultsSection: React.FC<DefaultsSectionProps> = ({
   return (
     <SectionCard
       title={t('settings.assistantDefaultConfigSection', { defaultValue: 'Default Configuration' })}
-      legend={asyncImage ? undefined : { label: newConversationsOnly, tone: 'next' }}
+      legend={asyncImage || appliesNextTurn ? undefined : { label: newConversationsOnly, tone: 'next' }}
       testId='assistant-card-defaults'
     >
       <div className='space-y-16px'>
-        {asyncImage && <div className='text-11px text-t-tertiary'>{newConversationsOnly}</div>}
         <ConfigRow
           icon={<LinkCloud theme='outline' size='14' />}
           label={t('settings.assistantDefaultModelLabel', { defaultValue: 'Model' })}
-          hint={t('settings.assistantDefaultConfigHint', {
-            defaultValue:
-              'Remember last used only takes effect after this assistant has recorded a previous selection.',
-          })}
+          hint={
+            <>
+              {appliesNextTurn && <div>{newConversationsOnly}</div>}
+              {t('settings.assistantDefaultConfigHint', {
+                defaultValue:
+                  'Remember last used only takes effect after this assistant has recorded a previous selection.',
+              })}
+            </>
+          }
         >
           <Select
             key={`assistant-default-model-${localeKey}`}
@@ -191,6 +199,7 @@ const DefaultsSection: React.FC<DefaultsSectionProps> = ({
         <ConfigRow
           icon={<Shield theme='outline' size='14' />}
           label={t('settings.assistantDefaultPermissionLabel', { defaultValue: 'Permission' })}
+          hint={appliesNextTurn ? newConversationsOnly : undefined}
         >
           <Select
             key={`assistant-default-permission-${localeKey}-${defaultPermissionMode}`}
@@ -241,6 +250,7 @@ const DefaultsSection: React.FC<DefaultsSectionProps> = ({
           <ConfigRow
             icon={<Brain theme='outline' size='14' />}
             label={t('settings.assistantDefaultThoughtLevelLabel', { defaultValue: 'Thought Level' })}
+            hint={appliesNextTurn ? newConversationsOnly : undefined}
           >
             <Select
               key={`assistant-default-thought-level-${localeKey}-${defaultThoughtLevelMode}`}
@@ -284,15 +294,18 @@ const DefaultsSection: React.FC<DefaultsSectionProps> = ({
             icon={<Lightning theme='outline' size='14' />}
             label={t('settings.assistantDefaultSkillsLabel', { defaultValue: 'Skills' })}
             hint={
-              <Button
-                type='text'
-                size='mini'
-                onClick={() => navigate('/settings/skills')}
-                data-testid='btn-open-skills-settings'
-                className='!h-auto !px-0 !text-primary-6'
-              >
-                {t('settings.skillsHub.manageInHub', { defaultValue: 'Manage in Skills Hub' })}
-              </Button>
+              <>
+                {nextTurnHint && <div>{nextTurnHint}</div>}
+                <Button
+                  type='text'
+                  size='mini'
+                  onClick={() => navigate('/settings/skills')}
+                  data-testid='btn-open-skills-settings'
+                  className='!h-auto !px-0 !text-primary-6'
+                >
+                  {t('settings.skillsHub.manageInHub', { defaultValue: 'Manage in Skills Hub' })}
+                </Button>
+              </>
             }
           >
             {canEditDefaultSkillsAndMcps ? (
@@ -401,15 +414,18 @@ const DefaultsSection: React.FC<DefaultsSectionProps> = ({
           icon={<Toolkit theme='outline' size='14' />}
           label={t('settings.assistantDefaultMcpLabel', { defaultValue: 'MCP' })}
           hint={
-            <Button
-              type='text'
-              size='mini'
-              onClick={() => navigate('/settings/tools')}
-              data-testid='btn-open-mcp-settings'
-              className='!h-auto !px-0 !text-primary-6'
-            >
-              {t('settings.assistantOpenMcpSettings', { defaultValue: 'Open MCP settings' })}
-            </Button>
+            <>
+              {nextTurnHint && <div>{nextTurnHint}</div>}
+              <Button
+                type='text'
+                size='mini'
+                onClick={() => navigate('/settings/tools')}
+                data-testid='btn-open-mcp-settings'
+                className='!h-auto !px-0 !text-primary-6'
+              >
+                {t('settings.assistantOpenMcpSettings', { defaultValue: 'Open MCP settings' })}
+              </Button>
+            </>
           }
         >
           {canEditDefaultSkillsAndMcps ? (

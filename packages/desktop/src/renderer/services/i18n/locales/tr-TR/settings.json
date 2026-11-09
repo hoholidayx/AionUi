@@ -235,6 +235,7 @@
   "assistantNoMatchingAgent": "Eşleşen aracı yok",
   "assistantEffectiveImmediately": "Hemen geçerli",
   "assistantOnlyNewConversation": "Yalnızca yeni sohbetler için",
+  "assistantAppliesNextTurn": "Mevcut AionRS sohbetlerinde bir sonraki turda geçerli",
   "assistantDefaultModelLabel": "Model",
   "assistantDefaultPermissionLabel": "İzin",
   "assistantDefaultThoughtLevelLabel": "Düşünme Düzeyi",

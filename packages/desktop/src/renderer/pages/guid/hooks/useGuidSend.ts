@@ -143,12 +143,9 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
       selectedMcpServerIds !== undefined ? selectedAllMcpServerIds : defaultSelectedMcpServerIds;
     const selectedUserMcpServerIdsToSend =
       selectedMcpServerIds !== undefined ? selectedUserMcpServerIds : defaultSelectedUserMcpServerIds;
-    const selectedSessionMcpServersToSend =
-      selectedMcpServerIds !== undefined
-        ? selectedAllSessionMcpServers
-        : snapshotMcpServers
-            .filter((server) => (defaultSelectedMcpServerIds ?? []).includes(server.id))
-            .map((server) => toSessionMcpServer(server));
+    const defaultSessionMcpServers = snapshotMcpServers
+      .filter((server) => (defaultSelectedMcpServerIds ?? []).includes(server.id))
+      .map((server) => toSessionMcpServer(server));
 
     // `current_model` is the aionrs provider selection and means nothing to a
     // CLI agent, which owns its own model list. Used as a blanket fallback it
@@ -174,13 +171,10 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
     // model from the user's own config.
     const assistantOverrideModel =
       selectedAcpModel || (assistantBackend === 'aionrs' ? current_model?.use_model : undefined) || undefined;
-    const assistantOverrides = {
+    const assistantSessionSettings = {
       model: assistantOverrideModel,
       permission: selectedMode || undefined,
       thought_level: selectedThoughtLevelValue || undefined,
-      skill_ids: enabled_skills_to_send,
-      disabled_builtin_skill_ids: excludeBuiltinSkills,
-      mcp_ids: assistantOverrideMcpIds,
     };
 
     if (assistantBackend === 'aionrs') {
@@ -188,6 +182,11 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
         Message.warning(t('conversation.noModelConfigured'));
         return;
       }
+      const runtimeOverrides = {
+        ...(guidEnabledSkills !== undefined && { skill_ids: guidEnabledSkills }),
+        ...(guidDisabledBuiltinSkills !== undefined && { disabled_builtin_skill_ids: guidDisabledBuiltinSkills }),
+        ...(selectedMcpServerIds !== undefined && { mcp_ids: selectedAllMcpServerIds }),
+      };
       try {
         const conversation = await ipcBridge.conversation.create.invoke({
           name: input,
@@ -195,14 +194,17 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
           assistant: {
             id: assistantConversationId,
             locale: localeKey,
-            conversation_overrides: assistantOverrides,
+            conversation_overrides: { ...assistantSessionSettings, ...runtimeOverrides },
+            ...(Object.keys(runtimeOverrides).length > 0 && { runtime_overrides: runtimeOverrides }),
           },
           extra: {
             default_files: files.map(chatFileRefPath),
             workspace: finalWorkspace,
             custom_workspace: isCustomWorkspace,
-            selected_mcp_server_ids: selectedUserMcpServerIdsToSend,
-            selected_session_mcp_servers: selectedSessionMcpServersToSend,
+            ...(selectedMcpServerIds !== undefined && {
+              selected_mcp_server_ids: selectedUserMcpServerIds,
+              selected_session_mcp_servers: selectedAllSessionMcpServers,
+            }),
             ...(imageBackendId && { image_backend_id: imageBackendId }),
           },
         });
@@ -250,7 +252,12 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
         assistant: {
           id: assistantConversationId,
           locale: localeKey,
-          conversation_overrides: assistantOverrides,
+          conversation_overrides: {
+            ...assistantSessionSettings,
+            skill_ids: enabled_skills_to_send,
+            disabled_builtin_skill_ids: excludeBuiltinSkills,
+            mcp_ids: assistantOverrideMcpIds,
+          },
         },
         extra: {
           workspace: finalWorkspace,
@@ -258,7 +265,7 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
           default_files: files.map(chatFileRefPath),
           selected_mcp_server_ids: selectedUserMcpServerIdsToSend,
           selected_session_mcp_servers:
-            selectedMcpServerIds !== undefined ? selectedSessionMcpServers : selectedSessionMcpServersToSend,
+            selectedMcpServerIds !== undefined ? selectedSessionMcpServers : defaultSessionMcpServers,
         },
       });
       if (!conversation || !conversation.id) {

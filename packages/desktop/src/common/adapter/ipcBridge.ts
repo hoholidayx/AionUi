@@ -1854,6 +1854,11 @@ export interface ICreateConversationParams {
       disabled_builtin_skill_ids?: string[];
       mcp_ids?: string[];
     };
+    runtime_overrides?: {
+      skill_ids?: string[];
+      disabled_builtin_skill_ids?: string[];
+      mcp_ids?: string[];
+    };
   };
   extra: {
     workspace?: string;

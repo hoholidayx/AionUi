@@ -169,6 +169,7 @@ export interface CreateAssistantRequest {
 
 export type UpdateAssistantRequest = Partial<Omit<CreateAssistantRequest, 'id'>> & {
   id: string;
+  rules?: { kind: 'write'; locale?: string; content: string } | { kind: 'clear' };
 };
 
 export interface SetAssistantStateRequest {

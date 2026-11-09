@@ -235,6 +235,7 @@
   "assistantNoMatchingAgent": "일치하는 에이전트가 없습니다",
   "assistantEffectiveImmediately": "즉시 반영",
   "assistantOnlyNewConversation": "새 대화에만 적용",
+  "assistantAppliesNextTurn": "기존 AionRS 채팅의 다음 턴부터 적용",
   "assistantDefaultModelLabel": "모델",
   "assistantDefaultPermissionLabel": "권한",
   "assistantDefaultThoughtLevelLabel": "사고 수준",

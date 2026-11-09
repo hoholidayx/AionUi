@@ -235,6 +235,7 @@
   "assistantNoMatchingAgent": "هیچ ایجنتی مطابقت ندارد",
   "assistantEffectiveImmediately": "فوراً اعمال می‌شود",
   "assistantOnlyNewConversation": "فقط مکالمات جدید",
+  "assistantAppliesNextTurn": "از نوبت بعدی در گفت‌وگوهای موجود AionRS اعمال می‌شود",
   "assistantDefaultModelLabel": "مدل",
   "assistantDefaultPermissionLabel": "مجوز",
   "assistantDefaultThoughtLevelLabel": "سطح تفکر",
