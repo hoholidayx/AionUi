@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Message } from '@arco-design/web-react';
 import { BackendHttpError } from '@/common/adapter/httpBridge';
 import AionrsSendBox from '@/renderer/pages/conversation/platforms/aionrs/AionrsSendBox';
-import type { ImageBackendMenu } from '@/renderer/hooks/mcp/useImageBackends';
+import type { ImageBackendMenu } from '@/renderer/components/agent/ImageBackendSelector';
 import type { AionrsModelSelection } from '@/renderer/pages/conversation/platforms/aionrs/useAionrsModelSelection';
 import type { TeamSendBoxRuntime } from '@/renderer/pages/team/components/teamSendRuntime';
 
@@ -136,12 +136,19 @@ vi.mock('@/renderer/components/chat/SendBox', () => ({
 }));
 
 vi.mock('@/renderer/components/agent/AgentModeSelector', () => ({ default: () => null }));
+vi.mock('@/renderer/components/agent/ImageBackendSelector', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/renderer/components/agent/ImageBackendSelector')>()),
+  default: ({ menu }: { menu?: ImageBackendMenu }) => (
+    <button type='button' onClick={() => menu?.onSelect('image-backend:default')}>
+      Use global default
+    </button>
+  ),
+}));
 vi.mock('@/renderer/utils/platform', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/renderer/utils/platform')>()),
   isElectronDesktop: () => false,
 }));
-vi.mock('@/renderer/hooks/mcp/useImageBackends', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/renderer/hooks/mcp/useImageBackends')>()),
+vi.mock('@/renderer/hooks/mcp/useImageBackends', () => ({
   useImageBackends: (_assistantId: string | null, _locale: string, enabled: boolean) => ({
     backends: enabled ? [{ id: 'image-a', name: 'Image A', is_default: true }] : [],
     refreshBackends: vi.fn(),
@@ -154,11 +161,8 @@ vi.mock('@/renderer/components/chat/MobileActionSheet', () => ({
 }));
 vi.mock('@/renderer/components/chat/ThoughtDisplay', () => ({ default: () => null }));
 vi.mock('@/renderer/components/media/FileAttachButton', () => ({
-  default: ({ imageBackendMenu }: { imageBackendMenu?: ImageBackendMenu }) => (
-    <button type='button' onClick={() => imageBackendMenu?.onSelect('image-backend:default')}>
-      Use global default
-    </button>
-  ),
+  default: ({ renderExtraActions }: { renderExtraActions?: (close: () => void) => React.ReactNode }) =>
+    renderExtraActions?.(vi.fn()) ?? null,
 }));
 vi.mock('@/renderer/components/media/FilePreview', () => ({ default: () => null }));
 vi.mock('@/renderer/components/media/HorizontalFileList', () => ({

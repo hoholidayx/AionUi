@@ -6,8 +6,6 @@
 
 import type { IConversationMcpStatus, IConversationMcpStatusKind } from '@/common/config/storage';
 import { ipcBridge } from '@/common';
-import ImageBackendSelector from '@/renderer/components/agent/ImageBackendSelector';
-import type { ImageBackendMenu } from '@/renderer/hooks/mcp/useImageBackends';
 import { Button, Message, Trigger } from '@arco-design/web-react';
 import { FolderOpen, Lightning, Paperclip, Plus, Right, Shield } from '@icon-park/react';
 import { useConversationContextSafe } from '@/renderer/hooks/context/ConversationContext';
@@ -26,7 +24,8 @@ interface FileAttachButtonProps {
   onLocalFilesAdded?: (files: FileMetadata[]) => void;
   loadedSkills?: string[];
   loadedMcpStatuses?: IConversationMcpStatus[];
-  imageBackendMenu?: ImageBackendMenu;
+  /** Render extra actions alongside the attachment entries. */
+  renderExtraActions?: (close: () => void) => React.ReactNode;
 }
 
 const MenuItem: React.FC<{
@@ -80,7 +79,7 @@ const FileAttachButton: React.FC<FileAttachButtonProps> = ({
   onLocalFilesAdded,
   loadedSkills,
   loadedMcpStatuses,
-  imageBackendMenu,
+  renderExtraActions,
 }) => {
   const conversationContext = useConversationContextSafe();
   const { t } = useTranslation();
@@ -136,7 +135,7 @@ const FileAttachButton: React.FC<FileAttachButtonProps> = ({
   const hasMcpServers = mcpStatuses.length > 0;
   const plusIcon = <Plus theme='outline' size='14' strokeWidth={2} fill={iconColors.primary} />;
 
-  if (isDesktop && !hasSkills && !hasMcpServers) {
+  if (isDesktop && !hasSkills && !hasMcpServers && !renderExtraActions) {
     return (
       <Button
         type='secondary'
@@ -280,11 +279,7 @@ const FileAttachButton: React.FC<FileAttachButtonProps> = ({
         </>
       )}
 
-      {imageBackendMenu && (
-        <div className='px-6px'>
-          <ImageBackendSelector menu={imageBackendMenu} inMenu onSelected={() => setOpen(false)} />
-        </div>
-      )}
+      {renderExtraActions && <div className='px-6px'>{renderExtraActions(() => setOpen(false))}</div>}
       {/* 文件操作最常用，在最下（离 + 最近） */}
       <div className='px-6px'>
         {!isDesktop && (

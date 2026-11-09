@@ -8,7 +8,7 @@ import { ipcBridge } from '@/common';
 import type { IConversationMcpStatus } from '@/common/config/storage';
 import { resolveLocaleKey } from '@/common/utils';
 import AgentModeSelector from '@/renderer/components/agent/AgentModeSelector';
-import ImageBackendSelector from '@/renderer/components/agent/ImageBackendSelector';
+import ImageBackendSelector, { buildImageBackendMenu } from '@/renderer/components/agent/ImageBackendSelector';
 import CommandQueuePanel from '@/renderer/components/chat/CommandQueuePanel';
 import MobileActionSheet, {
   type MobileActionSheetEntry,
@@ -28,7 +28,7 @@ import { getSendBoxDraftHook, type FileOrFolderItem } from '@/renderer/hooks/cha
 import { createSetUploadFile, useSendBoxFiles } from '@/renderer/hooks/chat/useSendBoxFiles';
 import { useSlashCommands } from '@/renderer/hooks/chat/useSlashCommands';
 import { useOpenFileSelector } from '@/renderer/hooks/file/useOpenFileSelector';
-import { buildImageBackendMenu, useImageBackends } from '@/renderer/hooks/mcp/useImageBackends';
+import { useImageBackends } from '@/renderer/hooks/mcp/useImageBackends';
 import { useLatestRef } from '@/renderer/hooks/ui/useLatestRef';
 import {
   useConversationCommandQueue,
@@ -796,7 +796,11 @@ const AionrsSendBox: React.FC<{
             openFileSelector={openFileSelector}
             onLocalFilesAdded={handleFilesAdded}
             loadedMcpStatuses={loadedMcpStatuses}
-            imageBackendMenu={isWebUI ? imageBackendMenu : undefined}
+            renderExtraActions={
+              isWebUI && imageBackendMenu
+                ? (close) => <ImageBackendSelector menu={imageBackendMenu} inMenu onSelected={close} />
+                : undefined
+            }
           />
         }
         rightTools={

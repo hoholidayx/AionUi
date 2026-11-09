@@ -7,8 +7,8 @@
 import { act, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { ImageBackendMenu } from '@/renderer/components/agent/ImageBackendSelector';
 import { LayoutContext } from '@/renderer/hooks/context/LayoutContext';
-import type { ImageBackendMenu } from '@/renderer/hooks/mcp/useImageBackends';
 
 const {
   modelSelectionMock,

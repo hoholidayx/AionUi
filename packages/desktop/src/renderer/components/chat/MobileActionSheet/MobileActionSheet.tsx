@@ -4,35 +4,36 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { Button } from '@arco-design/web-react';
 import { Left, Right } from '@icon-park/react';
-import React, { Fragment, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import React, { Fragment, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import styles from './MobileActionSheet.module.css';
-import type { MobileActionSheetEntry, MobileActionSheetProps, MobileActionSheetSubMenu } from './types';
+import type { MobileActionSheetEntry, MobileActionSheetProps } from './types';
 
-const TRANSITION_MS = 260;
+const PANE_TRANSITION_MS = 260;
+const SHEET_TRANSITION_MS = 280;
 
 const MobileActionSheet: React.FC<MobileActionSheetProps> = ({ open, onClose, title, entries }) => {
   const { t } = useTranslation();
+  const titleId = useId();
+  const subTitleId = useId();
+  const mainPaneRef = useRef<HTMLDivElement>(null);
+  const subPaneRef = useRef<HTMLDivElement>(null);
   const [activeSubKey, setActiveSubKey] = useState<string | null>(null);
-  // Sub pane stays mounted briefly after deactivation so its slide-out animation
-  // can play. `subPhase` drives the animation: 'enter' positions the sub pane
-  // off-screen (right) before the next frame flips to 'shown', so the CSS
-  // transition has a starting point.
+  // Keep the previous pane mounted until its exit transition finishes.
   const [renderedSubKey, setRenderedSubKey] = useState<string | null>(null);
   const [subPhase, setSubPhase] = useState<'idle' | 'enter' | 'shown' | 'exit'>('idle');
   const [mounted, setMounted] = useState(false);
-  // `visible` lags `mounted` by one paint so the sheet renders at
-  // translateY(100%) first, then the next frame transitions to translateY(0).
-  // Without this gap, applying .visible on first mount skips the slide-up
-  // (perceived as a flash). Crucially we run the visibility flip in a
-  // *separate* layout effect — coupling it to `mounted` (instead of `open`)
-  // forces React to commit the off-screen frame before the rAF kicks in.
   const [visible, setVisible] = useState(false);
-  const openRafRef = useRef<number | null>(null);
 
-  // Mount / unmount lifecycle — drives DOM presence only.
+  const activeEntry = entries.find((entry) => entry.key === activeSubKey);
+  const activeSub = activeEntry?.submenu;
+  const renderedSub = entries.find((entry) => entry.key === renderedSubKey)?.submenu;
+  const isSubVisible = subPhase === 'shown' && Boolean(renderedSub);
+  const availableSubKey = activeSub ? activeSubKey : null;
+
   useEffect(() => {
     if (open) {
       setMounted(true);
@@ -40,45 +41,55 @@ const MobileActionSheet: React.FC<MobileActionSheetProps> = ({ open, onClose, ti
     }
     setVisible(false);
     setActiveSubKey(null);
-    const closeTimer = setTimeout(() => setMounted(false), 280);
+    const closeTimer = setTimeout(() => setMounted(false), SHEET_TRANSITION_MS);
     return () => clearTimeout(closeTimer);
   }, [open]);
 
-  // Visibility lifecycle — flips `.visible` only after the off-screen frame
-  // has been painted. Using useLayoutEffect with a `mounted` dependency
-  // guarantees we observe the freshly committed DOM before scheduling the rAF;
-  // this avoids React 18 batching collapsing mount + visible into one paint
-  // (which produced the inconsistent "snap up" animation).
+  // Give the browser a frame to paint the off-screen starting position.
   useLayoutEffect(() => {
     if (!open || !mounted) return;
-    const raf1 = requestAnimationFrame(() => {
-      const raf2 = requestAnimationFrame(() => setVisible(true));
-      openRafRef.current = raf2;
+    const previousFocus = document.activeElement;
+    let enterFrame = 0;
+    const startFrame = requestAnimationFrame(() => {
+      enterFrame = requestAnimationFrame(() => setVisible(true));
     });
-    openRafRef.current = raf1;
     return () => {
-      if (openRafRef.current !== null) cancelAnimationFrame(openRafRef.current);
+      cancelAnimationFrame(startFrame);
+      cancelAnimationFrame(enterFrame);
+      if (previousFocus instanceof HTMLElement && previousFocus.isConnected) {
+        previousFocus.focus({ preventScroll: true });
+      }
     };
   }, [open, mounted]);
 
   useEffect(() => {
-    if (activeSubKey) {
-      setRenderedSubKey(activeSubKey);
+    if (availableSubKey) {
+      setRenderedSubKey(availableSubKey);
       setSubPhase('enter');
-      const raf = requestAnimationFrame(() => {
-        requestAnimationFrame(() => setSubPhase('shown'));
+      let enterFrame = 0;
+      const startFrame = requestAnimationFrame(() => {
+        enterFrame = requestAnimationFrame(() => setSubPhase('shown'));
       });
-      return () => cancelAnimationFrame(raf);
+      return () => {
+        cancelAnimationFrame(startFrame);
+        cancelAnimationFrame(enterFrame);
+      };
     }
+    // Refreshing the menu can remove the entry behind the open pane.
+    if (activeSubKey) setActiveSubKey(null);
     if (renderedSubKey) {
       setSubPhase('exit');
       const id = setTimeout(() => {
         setRenderedSubKey(null);
         setSubPhase('idle');
-      }, TRANSITION_MS);
+      }, PANE_TRANSITION_MS);
       return () => clearTimeout(id);
     }
-  }, [activeSubKey, renderedSubKey]);
+  }, [activeSubKey, availableSubKey, renderedSubKey]);
+
+  useLayoutEffect(() => {
+    if (open && visible) (isSubVisible ? subPaneRef : mainPaneRef).current?.focus({ preventScroll: true });
+  }, [open, visible, isSubVisible]);
 
   useEffect(() => {
     if (!open) return;
@@ -88,11 +99,6 @@ const MobileActionSheet: React.FC<MobileActionSheetProps> = ({ open, onClose, ti
       document.body.style.overflow = previousOverflow;
     };
   }, [open]);
-
-  const activeEntry = activeSubKey ? entries.find((e) => e.key === activeSubKey) : null;
-  const activeSub: MobileActionSheetSubMenu | undefined = activeEntry?.submenu;
-  const renderedSubEntry = renderedSubKey ? entries.find((e) => e.key === renderedSubKey) : null;
-  const renderedSub: MobileActionSheetSubMenu | undefined = renderedSubEntry?.submenu;
 
   if (!mounted) {
     return null;
@@ -110,7 +116,7 @@ const MobileActionSheet: React.FC<MobileActionSheetProps> = ({ open, onClose, ti
   };
 
   const handleSubSelect = (key: string) => {
-    if (!activeSub || activeEntry?.disabled || activeSub.options.find((option) => option.key === key)?.disabled) return;
+    if (!activeSub || activeEntry?.disabled) return;
     activeSub.onSelect(key);
     // Multi-select (skills / MCP on the home page): toggle and stay so the user
     // can pick several in a row.
@@ -136,43 +142,55 @@ const MobileActionSheet: React.FC<MobileActionSheetProps> = ({ open, onClose, ti
         className={`${styles.sheet} ${visible ? styles.visible : ''}`}
         role='dialog'
         aria-modal='true'
+        aria-labelledby={isSubVisible ? subTitleId : title ? titleId : undefined}
         onClick={(e) => e.stopPropagation()}
+        onKeyDown={(event) => {
+          if (event.key === 'Escape') onClose();
+        }}
       >
         <div className={styles.handle} />
         <div className={styles.panes}>
           <div
-            className={`${styles.pane} ${styles.paneMain} ${subPhase === 'shown' ? styles.paneOutLeft : styles.paneActive}`}
-            aria-hidden={subPhase === 'shown'}
+            className={`${styles.pane} ${styles.paneMain} ${isSubVisible ? styles.paneOutLeft : styles.paneActive}`}
+            ref={mainPaneRef}
+            tabIndex={-1}
+            inert={!open || isSubVisible}
+            aria-hidden={!open || isSubVisible}
           >
-            {title && <div className={styles.header}>{title}</div>}
+            {title && (
+              <div className={styles.header} id={titleId}>
+                {title}
+              </div>
+            )}
             <div className={styles.list}>
               {entries.map((entry, index) => (
                 <Fragment key={entry.key}>
                   {entry.dividerBefore && index !== 0 && <div className={styles.divider} />}
-                  <div
-                    className={`${styles.item} ${entry.disabled ? styles.disabled : ''}`}
-                    aria-disabled={entry.disabled}
+                  <Button
+                    type='text'
+                    className={styles.item}
+                    disabled={entry.disabled}
                     onClick={() => handleEntryClick(entry)}
                     data-testid={`mobile-action-sheet-${entry.key}`}
                   >
                     {entry.icon && (
-                      <div className={`${styles.icon} ${entry.variant === 'muted' ? styles.muted : ''}`}>
+                      <span className={`${styles.icon} ${entry.variant === 'muted' ? styles.muted : ''}`}>
                         {entry.icon}
-                      </div>
+                      </span>
                     )}
-                    <div className={styles.body}>
-                      <div className={styles.label}>{entry.label}</div>
-                      {entry.description && <div className={styles.desc}>{entry.description}</div>}
-                    </div>
+                    <span className={styles.body}>
+                      <span className={styles.label}>{entry.label}</span>
+                      {entry.description && <span className={styles.desc}>{entry.description}</span>}
+                    </span>
                     {(entry.meta || entry.submenu) && (
-                      <div className={styles.meta}>
+                      <span className={styles.meta}>
                         {entry.meta && <span className={styles.metaText}>{entry.meta}</span>}
                         {entry.submenu && (
                           <Right theme='outline' size='14' className={styles.chevron} aria-hidden='true' />
                         )}
-                      </div>
+                      </span>
                     )}
-                  </div>
+                  </Button>
                 </Fragment>
               ))}
             </div>
@@ -180,15 +198,20 @@ const MobileActionSheet: React.FC<MobileActionSheetProps> = ({ open, onClose, ti
 
           {renderedSub && (
             <div
-              className={`${styles.pane} ${styles.paneSub} ${subPhase === 'shown' ? styles.paneActive : styles.paneOutRight}`}
-              aria-hidden={subPhase !== 'shown'}
+              className={`${styles.pane} ${styles.paneSub} ${isSubVisible ? styles.paneActive : styles.paneOutRight}`}
+              ref={subPaneRef}
+              tabIndex={-1}
+              inert={!open || !isSubVisible}
+              aria-hidden={!open || !isSubVisible}
             >
               <div className={styles.subbar}>
-                <button className={styles.back} onClick={() => setActiveSubKey(null)} type='button'>
+                <Button className={styles.back} onClick={() => setActiveSubKey(null)} type='text'>
                   <Left theme='outline' size='16' />
-                  <span>{t('common.back', { defaultValue: 'Back' })}</span>
-                </button>
-                <div className={styles.subtitle}>{renderedSub.title}</div>
+                  <span>{t('common.goBack')}</span>
+                </Button>
+                <div className={styles.subtitle} id={subTitleId}>
+                  {renderedSub.title}
+                </div>
               </div>
               <div className={styles.list}>
                 {renderedSub.options.length === 0 ? (
@@ -198,30 +221,32 @@ const MobileActionSheet: React.FC<MobileActionSheetProps> = ({ open, onClose, ti
                     const showRadio = renderedSub.multiSelect !== true && renderedSub.selectable !== false;
                     const showCheckbox = renderedSub.multiSelect === true;
                     return (
-                      <div
+                      <Button
+                        type='text'
                         key={option.key}
-                        className={`${styles.item} ${option.disabled ? styles.disabled : ''}`}
-                        aria-disabled={option.disabled}
+                        className={styles.item}
+                        disabled={option.disabled || activeEntry?.disabled}
+                        aria-pressed={showRadio || showCheckbox ? Boolean(option.active) : undefined}
                         onClick={() => handleSubSelect(option.key)}
                         data-testid={`mobile-action-sheet-option-${option.key}`}
                       >
-                        <div className={styles.body}>
-                          <div className={styles.label}>{option.label}</div>
-                          {option.description && <div className={styles.desc}>{option.description}</div>}
-                        </div>
+                        <span className={styles.body}>
+                          <span className={styles.label}>{option.label}</span>
+                          {option.description && <span className={styles.desc}>{option.description}</span>}
+                        </span>
                         {showRadio && (
-                          <div
+                          <span
                             className={`${styles.radio} ${option.active ? styles.checked : ''}`}
                             aria-hidden='true'
                           />
                         )}
                         {showCheckbox && (
-                          <div
+                          <span
                             className={`${styles.checkbox} ${option.active ? styles.checkboxChecked : ''}`}
                             aria-hidden='true'
                           />
                         )}
-                      </div>
+                      </Button>
                     );
                   })
                 )}

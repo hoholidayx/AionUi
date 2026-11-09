@@ -4,13 +4,69 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import type { ImageBackendMenu } from '@/renderer/hooks/mcp/useImageBackends';
+import type { useImageBackends } from '@/renderer/hooks/mcp/useImageBackends';
 import { Button, Dropdown, Menu } from '@arco-design/web-react';
 import { Picture, Right } from '@icon-park/react';
+import type { TFunction } from 'i18next';
 import React, { useState } from 'react';
+
+export type ImageBackendMenu = {
+  title: string;
+  currentLabel?: string;
+  options: { id: string | null; key: string; label: string; active: boolean; disabled: boolean }[];
+  disabled: boolean;
+  onOpen: () => void;
+  onSelect: (key: string) => void;
+};
+
+/** Build the same choices for the Web menus and the desktop app's picker. */
+export const buildImageBackendMenu = (
+  backends: ReturnType<typeof useImageBackends>['backends'],
+  t: TFunction,
+  {
+    value,
+    disabled,
+    onChange,
+    onOpen,
+  }: { value?: string | null; disabled: boolean; onChange: (id: string | null) => void; onOpen: () => void }
+): ImageBackendMenu | undefined => {
+  if (backends.length === 0) return undefined;
+
+  const title = t('mcp.imageBackend.label');
+  const accountDefault = backends.find((server) => server.is_default);
+  const choices: { id: string | null; label: string; disabled?: boolean }[] = [
+    ...(accountDefault
+      ? [{ id: null, label: t('mcp.imageBackend.defaultWithName', { name: accountDefault.name }) }]
+      : []),
+    ...(value && !backends.some((server) => server.id === value)
+      ? [{ id: value, label: t('mcp.imageBackend.unavailable'), disabled: true }]
+      : []),
+    ...backends.map((server) => ({ id: server.id, label: server.name })),
+  ];
+  const options = choices.map((choice) => ({
+    id: choice.id,
+    label: choice.label,
+    key: choice.id === null ? 'image-backend:default' : `image-backend:server:${choice.id}`,
+    active: choice.id === (value || null),
+    disabled: disabled || choice.disabled === true,
+  }));
+
+  return {
+    title,
+    disabled,
+    options,
+    currentLabel: options.find((option) => option.active)?.label,
+    onOpen,
+    onSelect: (key: string) => {
+      const option = options.find((item) => item.key === key);
+      if (option && !option.disabled) onChange(option.id);
+    },
+  };
+};
 
 export const IMAGE_BACKEND_MENU_CLASS = 'max-w-[min(18rem,calc(100vw-16px))] max-h-[min(20rem,50dvh)] overflow-y-auto';
 
+/** Return menu items so Arco can apply its menu keyboard handling. */
 export const renderImageBackendOptions = (menu: ImageBackendMenu, onSelected?: () => void) =>
   menu.options.map((option) => (
     <Menu.Item

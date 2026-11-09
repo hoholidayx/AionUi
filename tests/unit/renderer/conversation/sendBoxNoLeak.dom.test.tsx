@@ -68,8 +68,7 @@ vi.mock('@/renderer/hooks/context/LayoutContext', () => ({ useLayoutContext: () 
 vi.mock('@/renderer/hooks/file/useOpenFileSelector', () => ({
   useOpenFileSelector: () => ({ openFileSelector: vi.fn(), onSlashBuiltinCommand: vi.fn() }),
 }));
-vi.mock('@/renderer/hooks/mcp/useImageBackends', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/renderer/hooks/mcp/useImageBackends')>()),
+vi.mock('@/renderer/hooks/mcp/useImageBackends', () => ({
   useImageBackends: () => ({ backends: [], refreshBackends: vi.fn() }),
 }));
 vi.mock('@/renderer/hooks/ui/useLatestRef', () => ({ useLatestRef: <T,>(v: T) => ({ current: v }) }));

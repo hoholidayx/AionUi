@@ -10,6 +10,7 @@ import AgentModeSelector from '@/renderer/components/agent/AgentModeSelector';
 import ImageBackendSelector, {
   IMAGE_BACKEND_MENU_CLASS,
   renderImageBackendOptions,
+  type ImageBackendMenu,
 } from '@/renderer/components/agent/ImageBackendSelector';
 import { DROPDOWN_SEARCH_THRESHOLD } from '@/renderer/components/agent/runtimeSelectorOptions';
 import AionInlineSearchInput from '@/renderer/components/base/AionInlineSearchInput';
@@ -21,7 +22,6 @@ import type {
 import type { AgentModeOption } from '@/renderer/utils/model/agentTypes';
 import type { AgentRuntimeDerivedOption } from '@/renderer/utils/model/agentRuntimeCatalog';
 import { useLayoutContext } from '@/renderer/hooks/context/LayoutContext';
-import type { ImageBackendMenu } from '@/renderer/hooks/mcp/useImageBackends';
 import { getCleanFileNames, FileService } from '@/renderer/services/FileService';
 import { iconColors } from '@/renderer/styles/colors';
 import { isElectronDesktop } from '@/renderer/utils/platform';

@@ -4,8 +4,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import ImageBackendSelector from '@/renderer/components/agent/ImageBackendSelector';
-import { buildImageBackendMenu, useImageBackends } from '@/renderer/hooks/mcp/useImageBackends';
+import ImageBackendSelector, { buildImageBackendMenu } from '@/renderer/components/agent/ImageBackendSelector';
+import MobileActionSheet from '@/renderer/components/chat/MobileActionSheet';
+import type { MobileActionSheetEntry } from '@/renderer/components/chat/MobileActionSheet';
+import { useImageBackends } from '@/renderer/hooks/mcp/useImageBackends';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
@@ -146,5 +148,45 @@ describe('ImageBackendSelector', () => {
     expect(button).toBeDisabled();
     fireEvent.click(button);
     expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+  });
+});
+
+describe('Image backend in the mobile action sheet', () => {
+  const onSelect = vi.fn();
+  const imageEntry: MobileActionSheetEntry = {
+    key: 'image-backend',
+    label: 'Image backend',
+    submenu: {
+      title: 'Image backend',
+      options: [{ key: 'unavailable', label: 'Unavailable backend', active: true, disabled: true }],
+      onSelect,
+    },
+  };
+  const attachEntry = { key: 'attach', label: 'Add files' };
+
+  it('exposes the selected but unavailable backend as a disabled button', async () => {
+    render(<MobileActionSheet open onClose={vi.fn()} title='More' entries={[attachEntry, imageEntry]} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Image backend' }));
+
+    const choice = await screen.findByRole('button', { name: 'Unavailable backend', pressed: true });
+    expect(choice).toBeDisabled();
+    fireEvent.click(choice);
+    expect(onSelect).not.toHaveBeenCalled();
+  });
+
+  it('returns to the plus menu when a catalog refresh removes the open submenu', async () => {
+    const onClose = vi.fn();
+    const { rerender } = render(
+      <MobileActionSheet open onClose={onClose} title='More' entries={[attachEntry, imageEntry]} />
+    );
+    fireEvent.click(await screen.findByRole('button', { name: 'Image backend' }));
+    await screen.findByRole('dialog', { name: 'Image backend' });
+
+    rerender(<MobileActionSheet open onClose={onClose} title='More' entries={[attachEntry]} />);
+
+    const menu = await screen.findByRole('dialog', { name: 'More' });
+    expect(screen.getByRole('button', { name: 'Add files' })).toBeVisible();
+    fireEvent.keyDown(menu, { key: 'Escape' });
+    expect(onClose).toHaveBeenCalledOnce();
   });
 });
