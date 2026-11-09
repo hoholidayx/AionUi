@@ -175,6 +175,22 @@ describe('AgentModeSelector', () => {
     expect(screen.getByTestId('mode-selector')).toHaveAttribute('data-current-mode', 'default');
   });
 
+  it('names the current permission on the icon button and shows descriptions in its menu', async () => {
+    render(
+      <AgentModeSelector
+        backend='aionrs'
+        conversation_id='conv-1'
+        compact
+        compactIconOnly
+        compactLeadingIcon={<span aria-hidden='true' />}
+      />
+    );
+
+    const button = await screen.findByRole('button', { name: '权限 · Default' });
+    expect(button).toHaveTextContent(/^$/);
+    expect(screen.getByText('Ask before sensitive changes')).toBeVisible();
+  });
+
   // Picking a mode the backend defers must NOT be reported as a failure, and must not
   // move the pill: the old code threw `config_not_observed` for anything that did not
   // read back as the requested value, which is exactly what a deferred switch looks like.

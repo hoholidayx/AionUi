@@ -280,10 +280,11 @@ const SendBox: React.FC<{
   bottomHint?: React.ReactNode;
   /**
    * Mobile-only: open a parent-supplied action sheet via the `+` button.
-   * When provided, mobile renders a single `+` button (left) and send/stop button (right);
-   * `tools` and `rightTools` are not rendered inline on mobile.
+   * When provided, the `+` button replaces inline tools on mobile.
    */
   onMobilePlusClick?: () => void;
+  /** Keep compact right-side controls next to Send on mobile. */
+  keepRightToolsOnMobile?: boolean;
   /** Team multi-column focus coordination: whether this box owns focus (default true). */
   active?: boolean;
   /** Called when the textarea gains focus, so the team layer can sync tab selection. */
@@ -336,14 +337,14 @@ const SendBox: React.FC<{
   onSelectedWorkspaceItemsChange,
   bottomHint,
   onMobilePlusClick,
+  keepRightToolsOnMobile,
   active = true,
   onFocused,
   topRightOverlay,
 }) => {
   const layout = useLayoutContext();
   const isMobile = layout?.isMobile ?? false;
-  // Mobile compact mode: parent supplies the `+` action sheet, which collapses
-  // tools/rightTools into a single launcher and lets the textarea start as a single line.
+  // The mobile action sheet lets the textarea start as a single line.
   const isMobileCompact = isMobile && Boolean(onMobilePlusClick);
   const effectiveLockMultiLine = lockMultiLine && !isMobileCompact;
   const effectiveDefaultMultiLine = defaultMultiLine && !isMobileCompact;
@@ -1863,10 +1864,9 @@ const SendBox: React.FC<{
     />
   ) : null;
 
-  // On mobile compact mode, the parent supplies the action sheet — collapse
-  // tools/rightTools into the `+` launcher while keeping voice input accessible.
+  // Mobile compact mode moves tools into the action sheet by default.
   const renderedTools = isMobileCompact ? mobilePlusButton : tools;
-  const renderedRightTools = isMobileCompact ? null : rightTools;
+  const renderedRightTools = isMobileCompact && !keepRightToolsOnMobile ? null : rightTools;
   const renderedSpeechButton = (
     <SpeechInputButton onLiveTranscript={handleLiveTranscript} onTranscript={handleSpeechTranscript} />
   );
@@ -2110,7 +2110,11 @@ const SendBox: React.FC<{
         </div>
         <UploadProgressBar source='sendbox' />
         <div
-          className={isSingleLine ? 'flex items-center gap-2 w-full min-w-0 overflow-hidden' : 'w-full overflow-hidden'}
+          className={
+            isSingleLine
+              ? `flex items-center w-full min-w-0 overflow-hidden ${isMobileCompact ? 'gap-1' : 'gap-2'}`
+              : 'w-full overflow-hidden'
+          }
         >
           {isSingleLine && (
             <div
@@ -2210,6 +2214,7 @@ const SendBox: React.FC<{
           </div>
           {isSingleLine && (
             <div className='flex items-center gap-1'>
+              {isMobileCompact && renderedRightTools}
               {renderedSpeechButton}
               {sendButtonPrefix}
               {renderActionButtons()}

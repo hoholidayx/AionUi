@@ -6,7 +6,7 @@
 
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import React, { useState } from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { layoutState } = vi.hoisted(() => ({
   layoutState: { isMobile: false },
@@ -155,6 +155,37 @@ const SendBoxHarness = ({
 };
 
 describe('SendBox active-controlled focus', () => {
+  beforeEach(() => {
+    layoutState.isMobile = false;
+  });
+
+  it.each([false, true])('shows opted-in mobile controls in the action row with multiline set to %s', (multiline) => {
+    layoutState.isMobile = true;
+    render(
+      <SendBox
+        value={multiline ? 'First line\nSecond line' : ''}
+        onSend={vi.fn()}
+        onMobilePlusClick={vi.fn()}
+        keepRightToolsOnMobile
+        rightTools={<button type='button'>Permission</button>}
+      />
+    );
+
+    const permission = screen.getByRole('button', { name: 'Permission' });
+    expect(permission).toBeVisible();
+    expect(permission.parentElement).toContainElement(screen.getByTestId('sendbox-send-btn'));
+    expect(screen.getByTestId('sendbox-mobile-plus-btn')).toBeVisible();
+  });
+
+  it('keeps mobile right-side tools in the action sheet by default', () => {
+    layoutState.isMobile = true;
+    render(
+      <SendBox onSend={vi.fn()} onMobilePlusClick={vi.fn()} rightTools={<button type='button'>Desktop tool</button>} />
+    );
+
+    expect(screen.queryByRole('button', { name: 'Desktop tool' })).not.toBeInTheDocument();
+  });
+
   it('keeps Enter mapped to Send while Draft box has its own icon action', async () => {
     const onSend = vi.fn().mockResolvedValue(undefined);
     const onAddToDraft = vi.fn();

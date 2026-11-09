@@ -126,8 +126,6 @@ const AcpSendBox: React.FC<{
   } = messageState;
   const { t } = useTranslation();
   const teamPermission = useTeamPermission();
-  // In team mode, all agents show the permission mode selector (members don't propagate)
-  const showModeSelector = true;
   const isLeaderInTeam = teamPermission && conversation_id === teamPermission.leaderConversationId;
   const { checkAndUpdateTitle } = useAutoTitle();
   const { atPath, uploadFile, setAtPath, setUploadFile, content, setContent } = useSendBoxDraft(conversation_id);
@@ -161,7 +159,6 @@ const AcpSendBox: React.FC<{
     [promptCapability, t]
   );
   const [isMobileSheetOpen, setIsMobileSheetOpen] = useState(false);
-  const [currentMode, setCurrentMode] = useState<string | undefined>(session_mode);
   const prepareRuntimeConfig = useCallback(async () => {
     if (teamPermission) return;
   }, [teamPermission]);
@@ -172,7 +169,6 @@ const AcpSendBox: React.FC<{
     configOptionsPort: teamPermission?.configOptionsPort,
     enabled: true,
   });
-  const runtimeMode = runtimeConfig.mode;
   const runtimeThoughtLevel = runtimeConfig.thoughtLevel;
   const handleThoughtLevelSetOption = useCallback(
     async (optionId: string, value: string) => runtimeConfig.setConfigOption(optionId, value),
@@ -194,27 +190,6 @@ const AcpSendBox: React.FC<{
     onSelectModelSuccess: () => Message.success(t('agent.model.switchSuccess')),
     onSelectModelFailed: (_modelId, error) => Message.error(t(configErrorMessageKey(error))),
   });
-  useEffect(() => {
-    if (!runtimeMode?.currentValue) return;
-    setCurrentMode(runtimeMode.currentValue);
-  }, [runtimeMode?.currentValue]);
-
-  const handleSheetModeChange = useCallback(
-    async (mode: string) => {
-      if (!runtimeMode || mode === runtimeMode.currentValue) return;
-      try {
-        await runtimeConfig.setConfigOption(runtimeMode.id, mode);
-        setCurrentMode(mode);
-        if (isLeaderInTeam) teamPermission?.propagateMode?.(mode);
-        Message.success(t('agentMode.switchSuccess'));
-      } catch (error) {
-        console.error('[AcpSendBox] Failed to switch mode via sheet:', error);
-        Message.error(t(configErrorMessageKey(error)));
-      }
-    },
-    [isLeaderInTeam, runtimeConfig, runtimeMode, t, teamPermission]
-  );
-
   const handleContentChange = useCallback(
     (val: string) => {
       setContent(val);
@@ -538,19 +513,6 @@ Please check your local CLI tool authentication status`,
   const sheetEntries = useMemo<MobileActionSheetEntry[]>(() => {
     if (!isMobile) return [];
 
-    const availableModes =
-      runtimeMode?.options.map((item) => ({
-        value: item.value,
-        label: item.label,
-        description: item.description ?? undefined,
-      })) ?? [];
-    const modeOptions: MobileActionSheetOption[] = availableModes.map((mode) => ({
-      key: mode.value,
-      label: t(`agentMode.${mode.value}`, { defaultValue: mode.label }),
-      description: mode.description,
-      active: (runtimeMode?.currentValue ?? currentMode) === mode.value,
-    }));
-
     const modelOptions: MobileActionSheetOption[] = canSwitchModel
       ? (model_info?.available_models ?? []).map((model) => ({
           key: model.id,
@@ -562,8 +524,6 @@ Please check your local CLI tool authentication status`,
 
     const currentModelLabel =
       model_info?.current_model_label || model_info?.current_model_id || t('conversation.welcome.useCliModel');
-    const currentModeLabel =
-      modeOptions.find((opt) => opt.active)?.label ?? t('agentMode.default', { defaultValue: 'Default' });
 
     const entries: MobileActionSheetEntry[] = [];
 
@@ -605,20 +565,6 @@ Please check your local CLI tool authentication status`,
               .then(() => Message.success(t('agent.thoughtLevel.switchSuccess')))
               .catch((error) => Message.error(t(configErrorMessageKey(error))));
           },
-        },
-      });
-    }
-
-    if (modeOptions.length > 0) {
-      entries.push({
-        key: 'permission',
-        icon: <Shield theme='outline' size='16' />,
-        label: t('agentMode.permission', { defaultValue: 'Permission' }),
-        meta: currentModeLabel,
-        submenu: {
-          title: t('agentMode.permission', { defaultValue: 'Permission' }),
-          options: modeOptions,
-          onSelect: (key) => void handleSheetModeChange(key),
         },
       });
     }
@@ -680,14 +626,11 @@ Please check your local CLI tool authentication status`,
   }, [
     attachEntries,
     canSwitchModel,
-    currentMode,
-    handleSheetModeChange,
     handleThoughtLevelSetOption,
     isMobile,
     loadedMcpStatuses,
     loadedSkills,
     model_info,
-    runtimeMode,
     runtimeThoughtLevel,
     selectModel,
     setContent,
@@ -805,6 +748,7 @@ Please check your local CLI tool authentication status`,
       <CrossSessionDisabledBanner />
       <SendBox
         onMobilePlusClick={isMobile ? () => setIsMobileSheetOpen(true) : undefined}
+        keepRightToolsOnMobile
         value={content}
         onChange={handleContentChange}
         selectedWorkspaceItems={atPath}
@@ -850,22 +794,20 @@ Please check your local CLI tool authentication status`,
         }
         rightTools={
           <div className='flex items-center gap-8px min-w-0'>
-            {showModeSelector && (
-              <AgentModeSelector
-                backend={backend}
-                conversation_id={conversation_id}
-                compact
-                initialMode={session_mode}
-                compactLeadingIcon={<Shield theme='outline' size='14' fill={iconColors.secondary} />}
-                modeLabelFormatter={(mode) => t(`agentMode.${mode.value}`, { defaultValue: mode.label })}
-                compactLabelPrefix={t('agentMode.permission')}
-                hideCompactLabelPrefixOnMobile
-                onModeChanged={isLeaderInTeam ? teamPermission?.propagateMode : undefined}
-                beforeRuntimeSync={prepareRuntimeConfig}
-                beforeRuntimeSet={teamPermission?.warmupSession}
-                configOptionsPort={teamPermission?.configOptionsPort}
-              />
-            )}
+            <AgentModeSelector
+              backend={backend}
+              conversation_id={conversation_id}
+              compact
+              compactIconOnly={isMobile}
+              initialMode={session_mode}
+              compactLeadingIcon={<Shield theme='outline' size='14' fill={iconColors.secondary} />}
+              modeLabelFormatter={(mode) => t(`agentMode.${mode.value}`, { defaultValue: mode.label })}
+              compactLabelPrefix={t('agentMode.permission')}
+              onModeChanged={isLeaderInTeam ? teamPermission?.propagateMode : undefined}
+              beforeRuntimeSync={prepareRuntimeConfig}
+              beforeRuntimeSet={teamPermission?.warmupSession}
+              configOptionsPort={teamPermission?.configOptionsPort}
+            />
           </div>
         }
         prefix={

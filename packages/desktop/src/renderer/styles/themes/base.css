@@ -1,7 +1,7 @@
 /* Base styles - theme-independent */
 
 :root {
-  --app-min-width: 360px;
+  --app-min-width: min(360px, 100vw);
   --titlebar-height: 36px;
 }
 
@@ -14,7 +14,7 @@ body,
 #root,
 .layout,
 .layout-content {
-  min-width: var(--app-min-width); /* prevent layout collapse on very small screens */
+  min-width: var(--app-min-width);
 }
 
 /*

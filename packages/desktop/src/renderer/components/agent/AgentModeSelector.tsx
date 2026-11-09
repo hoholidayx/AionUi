@@ -10,9 +10,8 @@ import {
   useAcpConfigOptions,
 } from '@/renderer/hooks/agent/useAcpConfigOptions';
 import type { AgentModeOption } from '@/renderer/utils/model/agentTypes';
-import { useLayoutContext } from '@/renderer/hooks/context/LayoutContext';
 import { AgentLogoIcon } from './AgentBadge';
-import { Dropdown, Menu, Message, Tooltip } from '@arco-design/web-react';
+import { Button, Dropdown, Menu, Message, Tooltip } from '@arco-design/web-react';
 import { Down } from '@icon-park/react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -41,6 +40,8 @@ export interface AgentModeSelectorProps {
   conversation_id?: string;
   /** Compact mode: only show mode label + dropdown, no logo/name / 紧凑模式：仅显示模式标签和下拉 */
   compact?: boolean;
+  /** Render the compact selector as an icon button using compactLeadingIcon. */
+  compactIconOnly?: boolean;
   /** Show agent logo in compact mode / 紧凑模式是否显示代理图标 */
   showLogoInCompact?: boolean;
   /** Compact label content: mode label or agent name / 紧凑模式文案：模式名或代理名 */
@@ -57,8 +58,6 @@ export interface AgentModeSelectorProps {
   modeLabelFormatter?: (mode: AgentModeOption) => string;
   /** Optional compact prefix text, e.g. "Permission" / "权限" */
   compactLabelPrefix?: string;
-  /** Hide compact prefix on mobile */
-  hideCompactLabelPrefixOnMobile?: boolean;
   /** Callback fired after a successful mode change (for team-mode propagation) */
   onModeChanged?: (mode: string) => void;
   /** Dynamic modes from capabilities (overrides static list when non-empty) */
@@ -86,6 +85,7 @@ const AgentModeSelector: React.FC<AgentModeSelectorProps> = ({
   agentLogoIsFallback,
   conversation_id,
   compact,
+  compactIconOnly = false,
   showLogoInCompact = false,
   compactLabelType = 'mode',
   initialMode,
@@ -94,7 +94,6 @@ const AgentModeSelector: React.FC<AgentModeSelectorProps> = ({
   compactLeadingIcon,
   modeLabelFormatter,
   compactLabelPrefix,
-  hideCompactLabelPrefixOnMobile = false,
   onModeChanged,
   dynamicModes,
   beforeRuntimeSync,
@@ -102,8 +101,6 @@ const AgentModeSelector: React.FC<AgentModeSelectorProps> = ({
   configOptionsPort,
 }) => {
   const { t } = useTranslation();
-  const layout = useLayoutContext();
-  const isMobile = Boolean(layout?.isMobile);
   const runtimeConfig = useAcpConfigOptions({
     conversation_id: conversation_id ?? '',
     prepareRuntime: beforeRuntimeSync,
@@ -240,12 +237,22 @@ const AgentModeSelector: React.FC<AgentModeSelectorProps> = ({
 
   // Dropdown menu (shared between compact and full mode)
   const dropdownMenu = (
-    <Menu onClickMenuItem={(key) => void handleModeChange(key)}>
+    <Menu
+      className={
+        compactIconOnly ? 'max-w-[min(18rem,calc(100vw-16px))] max-h-[min(20rem,50dvh)] overflow-y-auto' : undefined
+      }
+      onClickMenuItem={(key) => void handleModeChange(key)}
+    >
       <Menu.ItemGroup title={t('agentMode.switchMode', { defaultValue: 'Switch Mode' })}>
         {modes.map((mode: AgentModeOption) => (
-          <Menu.Item key={mode.value} className={current_mode === mode.value ? '!bg-2' : ''}>
+          <Menu.Item
+            key={mode.value}
+            role='menuitemradio'
+            aria-checked={current_mode === mode.value}
+            className={`${current_mode === mode.value ? '!bg-2' : ''} ${compactIconOnly ? '!h-auto !min-h-32px !py-6px !leading-5 !whitespace-normal [overflow-wrap:anywhere]' : ''}`}
+          >
             <div
-              className='flex items-center gap-8px'
+              className={`flex gap-8px ${compactIconOnly ? 'items-start' : 'items-center'}`}
               data-mode-value={mode.value}
               data-testid={`aionrs-mode-option-${mode.value}`}
             >
@@ -257,7 +264,12 @@ const AgentModeSelector: React.FC<AgentModeSelectorProps> = ({
               <span aria-hidden='true' className='w-16px shrink-0 text-primary'>
                 {current_mode === mode.value ? '✓' : pendingMode === mode.value ? '⏱' : ''}
               </span>
-              {mode.description ? (
+              {compactIconOnly ? (
+                <div className='min-w-0'>
+                  <div>{getDisplayModeLabel(mode)}</div>
+                  {mode.description && <div className='text-12px text-t-secondary'>{mode.description}</div>}
+                </div>
+              ) : mode.description ? (
                 <Tooltip content={mode.description} position='right'>
                   <span className='min-w-0 truncate'>{getDisplayModeLabel(mode)}</span>
                 </Tooltip>
@@ -290,12 +302,38 @@ const AgentModeSelector: React.FC<AgentModeSelectorProps> = ({
     const compactLabel =
       compactLabelOverride ||
       (compactLabelPrefix && compactLabelType !== 'agent' && !showPendingTarget
-        ? hideCompactLabelPrefixOnMobile && isMobile
-          ? baseCompactLabel
-          : `${compactLabelPrefix} · ${baseCompactLabel}`
+        ? `${compactLabelPrefix} · ${baseCompactLabel}`
         : baseWithPending);
     if (!canInteract && legacyCompactBehavior && !runtimeModeBlocked) {
       return null;
+    }
+
+    if (compactIconOnly) {
+      const label = `${t('agentMode.permission')} · ${baseWithPending}`;
+      return (
+        <Dropdown
+          trigger='click'
+          position='tr'
+          disabled={!canInteract || isSetting}
+          popupVisible={canInteract && !isSetting && dropdownVisible}
+          onVisibleChange={setDropdownVisible}
+          droplist={dropdownMenu}
+        >
+          <Button
+            data-testid={backend ? `agent-mode-selector-${backend}` : 'agent-mode-selector'}
+            data-current-mode={current_mode}
+            type='secondary'
+            shape='circle'
+            className='shrink-0'
+            aria-label={label}
+            aria-haspopup='menu'
+            aria-expanded={canInteract && !isSetting && dropdownVisible}
+            title={label}
+            loading={isSetting}
+            icon={compactLeadingIcon}
+          />
+        </Dropdown>
+      );
     }
 
     const compactContent = (

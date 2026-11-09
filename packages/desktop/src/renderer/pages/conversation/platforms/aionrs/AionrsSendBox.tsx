@@ -128,7 +128,6 @@ const AionrsSendBox: React.FC<{
   teamRuntime?: TeamSendBoxRuntime;
 }> = ({ conversation_id, modelSelection, imageBackendId, session_mode, agent_name, teamSendMessage, teamRuntime }) => {
   const [dynamicModes, setDynamicModes] = useState<AgentModeOption[]>([]);
-  const [currentMode, setCurrentMode] = useState<string | undefined>(session_mode);
   const [isMobileSheetOpen, setIsMobileSheetOpen] = useState(false);
   const [savingImageBackend, setSavingImageBackend] = useState(false);
   const savingImageBackendRef = useRef(false);
@@ -190,13 +189,7 @@ const AionrsSendBox: React.FC<{
     configOptionsPort: teamPermission?.configOptionsPort,
     enabled: Boolean(conversation_id),
   });
-  const runtimeMode = runtimeConfig.mode;
   const runtimeThoughtLevel = runtimeConfig.thoughtLevel;
-
-  useEffect(() => {
-    if (!runtimeMode?.currentValue) return;
-    setCurrentMode(runtimeMode.currentValue);
-  }, [runtimeMode?.currentValue]);
 
   useEffect(() => {
     if (!conversation_id) return;
@@ -511,22 +504,6 @@ const AionrsSendBox: React.FC<{
     dividerBefore: true,
   });
 
-  const handleSheetModeChange = useCallback(
-    async (mode: string) => {
-      if (!runtimeMode || mode === runtimeMode.currentValue) return;
-      try {
-        await runtimeConfig.setConfigOption(runtimeMode.id, mode);
-        setCurrentMode(mode);
-        propagateMode?.(mode);
-        Message.success(t('agentMode.switchSuccess'));
-      } catch (error) {
-        console.error('[AionrsSendBox] Failed to switch mode via sheet:', error);
-        Message.error(t(configErrorMessageKey(error)));
-      }
-    },
-    [propagateMode, runtimeConfig, runtimeMode, t]
-  );
-
   const handleSheetModelSelect = useCallback(
     (value: string) => {
       if (runtimeConfig.isConfigOptionBlocked?.('model')) return;
@@ -542,26 +519,6 @@ const AionrsSendBox: React.FC<{
   const sheetEntries = useMemo<MobileActionSheetEntry[]>(() => {
     if (!isMobile) return [];
 
-    const availableModes: AgentModeOption[] =
-      runtimeMode?.options.map((item) => ({
-        value: item.value,
-        label: item.label,
-        description: item.description ?? undefined,
-      })) ??
-      (dynamicModes.length > 0
-        ? dynamicModes
-        : [
-            { value: 'default', label: 'Default' },
-            { value: 'auto_edit', label: 'Auto-Accept Edits' },
-            { value: 'yolo', label: 'YOLO' },
-          ]);
-    const modeOptions: MobileActionSheetOption[] = availableModes.map((mode) => ({
-      key: mode.value,
-      label: t(`agentMode.${mode.value}`, { defaultValue: mode.label }),
-      description: mode.description,
-      active: (runtimeMode?.currentValue ?? currentMode) === mode.value,
-    }));
-
     const modelOptions: MobileActionSheetOption[] = modelSelection.providers.flatMap((provider) =>
       modelSelection.getAvailableModels(provider).map((modelName) => ({
         key: `${provider.id}::${modelName}`,
@@ -572,8 +529,6 @@ const AionrsSendBox: React.FC<{
       }))
     );
 
-    const currentModeLabel =
-      modeOptions.find((opt) => opt.active)?.label ?? t('agentMode.default', { defaultValue: 'Default' });
     const currentModelLabel = modelSelection.current_model?.use_model || t('conversation.welcome.selectModel');
 
     const entries: MobileActionSheetEntry[] = [
@@ -587,17 +542,6 @@ const AionrsSendBox: React.FC<{
           options: modelOptions,
           onSelect: handleSheetModelSelect,
           emptyText: t('conversation.welcome.selectModel'),
-        },
-      },
-      {
-        key: 'permission',
-        icon: <Shield theme='outline' size='16' />,
-        label: t('agentMode.permission', { defaultValue: 'Permission' }),
-        meta: currentModeLabel,
-        submenu: {
-          title: t('agentMode.permission', { defaultValue: 'Permission' }),
-          options: modeOptions,
-          onSelect: (key) => void handleSheetModeChange(key),
         },
       },
       ...attachEntries,
@@ -679,16 +623,12 @@ const AionrsSendBox: React.FC<{
     return entries;
   }, [
     attachEntries,
-    currentMode,
-    dynamicModes,
-    handleSheetModeChange,
     handleSheetModelSelect,
     isMobile,
     loadedMcpStatuses,
     loadedSkills,
     modelSelection,
     runtimeConfig,
-    runtimeMode,
     runtimeThoughtLevel,
     setContent,
     t,
@@ -791,6 +731,7 @@ const AionrsSendBox: React.FC<{
       <SendBox
         data-testid='aionrs-sendbox'
         onMobilePlusClick={isMobile ? () => setIsMobileSheetOpen(true) : undefined}
+        keepRightToolsOnMobile
         value={content}
         onChange={handleContentChange}
         selectedWorkspaceItems={atPath}
@@ -838,18 +779,18 @@ const AionrsSendBox: React.FC<{
           />
         }
         rightTools={
-          <div className='flex items-center gap-8px min-w-0'>
-            {!isMobile && imageBackendSelector}
+          <div className={`flex items-center min-w-0 ${isMobile ? 'gap-4px' : 'gap-8px'}`}>
+            {imageBackendSelector}
             <AgentModeSelector
               backend='aionrs'
               conversation_id={conversation_id}
               compact
+              compactIconOnly={isMobile}
               initialMode={session_mode}
               dynamicModes={dynamicModes}
               compactLeadingIcon={<Shield theme='outline' size='14' fill={iconColors.secondary} />}
               modeLabelFormatter={(mode) => t(`agentMode.${mode.value}`, { defaultValue: mode.label })}
               compactLabelPrefix={t('agentMode.permission')}
-              hideCompactLabelPrefixOnMobile
               onModeChanged={propagateMode}
               beforeRuntimeSync={prepareRuntimeConfig}
               beforeRuntimeSet={teamPermission?.warmupSession}
@@ -859,7 +800,6 @@ const AionrsSendBox: React.FC<{
         }
         prefix={
           <>
-            {isMobile && imageBackendSelector}
             {uploadFile.length > 0 && (
               <HorizontalFileList>
                 {uploadFile.map((path) => (
