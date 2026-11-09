@@ -6,6 +6,7 @@
 
 import { ipcBridge } from '@/common';
 import type { IConversationMcpStatus } from '@/common/config/storage';
+import { resolveLocaleKey } from '@/common/utils';
 import AgentModeSelector from '@/renderer/components/agent/AgentModeSelector';
 import ImageBackendSelector from '@/renderer/components/agent/ImageBackendSelector';
 import CommandQueuePanel from '@/renderer/components/chat/CommandQueuePanel';
@@ -27,6 +28,7 @@ import { getSendBoxDraftHook, type FileOrFolderItem } from '@/renderer/hooks/cha
 import { createSetUploadFile, useSendBoxFiles } from '@/renderer/hooks/chat/useSendBoxFiles';
 import { useSlashCommands } from '@/renderer/hooks/chat/useSlashCommands';
 import { useOpenFileSelector } from '@/renderer/hooks/file/useOpenFileSelector';
+import { buildImageBackendMenu, useImageBackends } from '@/renderer/hooks/mcp/useImageBackends';
 import { useLatestRef } from '@/renderer/hooks/ui/useLatestRef';
 import {
   useConversationCommandQueue,
@@ -50,8 +52,9 @@ import { type ChatFileRef, isChatFileRef, uploadFileRef } from '@/common/types/c
 import { localSelectionItems, mergeFileSelectionItems } from '@/renderer/utils/file/fileSelection';
 import { collectChatFileRefs, splitChatFileRefs } from '@/renderer/utils/file/messageFiles';
 import type { AgentModeOption } from '@/renderer/utils/model/agentTypes';
+import { isElectronDesktop } from '@/renderer/utils/platform';
 import { Button, Message, Tag } from '@arco-design/web-react';
-import { Brain, Lightning, MagicHat, Shield } from '@icon-park/react';
+import { Brain, Lightning, MagicHat, Picture, Shield } from '@icon-park/react';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { classifyConversationBusyError } from '../conversationBusyError';
@@ -142,7 +145,13 @@ const AionrsSendBox: React.FC<{
       name,
       status: 'loaded',
     }));
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const isWebUI = !isElectronDesktop();
+  const { backends: imageBackends, refreshBackends: refreshImageBackends } = useImageBackends(
+    teamRuntime ? null : conversationContext?.assistantId,
+    resolveLocaleKey(i18n?.language ?? 'en-US'),
+    !teamRuntime
+  );
   const { checkAndUpdateTitle } = useAutoTitle();
   const { current_model } = modelSelection;
   const teamPermission = useTeamPermission();
@@ -516,6 +525,13 @@ const AionrsSendBox: React.FC<{
     [modelSelection, runtimeConfig]
   );
 
+  const imageBackendMenu = buildImageBackendMenu(imageBackends, t, {
+    value: imageBackendId,
+    disabled: savingImageBackend || isBusy,
+    onChange: (id) => void changeImageBackend(id),
+    onOpen: () => void refreshImageBackends(),
+  });
+
   const sheetEntries = useMemo<MobileActionSheetEntry[]>(() => {
     if (!isMobile) return [];
 
@@ -620,11 +636,24 @@ const AionrsSendBox: React.FC<{
       });
     }
 
+    if (isWebUI && imageBackendMenu) {
+      entries.push({
+        key: 'image-backend',
+        icon: <Picture theme='outline' size='16' />,
+        label: imageBackendMenu.title,
+        meta: imageBackendMenu.currentLabel,
+        disabled: imageBackendMenu.disabled,
+        submenu: imageBackendMenu,
+      });
+    }
+
     return entries;
   }, [
     attachEntries,
     handleSheetModelSelect,
     isMobile,
+    isWebUI,
+    imageBackendMenu,
     loadedMcpStatuses,
     loadedSkills,
     modelSelection,
@@ -692,15 +721,6 @@ const AionrsSendBox: React.FC<{
     [effectiveHandleStop, prioritize]
   );
   const sendBoxWidthClass = getChatSurfaceWidthClass();
-
-  const imageBackendSelector = !teamRuntime && (
-    <ImageBackendSelector
-      value={imageBackendId}
-      assistantId={conversationContext?.assistantId}
-      disabled={savingImageBackend || isBusy}
-      onChange={(id) => void changeImageBackend(id)}
-    />
-  );
 
   return (
     <div className={`${sendBoxWidthClass} flex flex-col mt-auto mb-16px`}>
@@ -776,11 +796,12 @@ const AionrsSendBox: React.FC<{
             openFileSelector={openFileSelector}
             onLocalFilesAdded={handleFilesAdded}
             loadedMcpStatuses={loadedMcpStatuses}
+            imageBackendMenu={isWebUI ? imageBackendMenu : undefined}
           />
         }
         rightTools={
           <div className={`flex items-center min-w-0 ${isMobile ? 'gap-4px' : 'gap-8px'}`}>
-            {imageBackendSelector}
+            {!isWebUI && <ImageBackendSelector menu={imageBackendMenu} />}
             <AgentModeSelector
               backend='aionrs'
               conversation_id={conversation_id}

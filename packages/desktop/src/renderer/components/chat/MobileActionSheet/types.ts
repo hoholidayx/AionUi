@@ -11,12 +11,14 @@ export interface MobileActionSheetOption {
   label: ReactNode;
   description?: ReactNode;
   active?: boolean;
+  disabled?: boolean;
 }
 
 export interface MobileActionSheetSubMenu {
   title: ReactNode;
   options: MobileActionSheetOption[];
   onSelect: (key: string) => void;
+  onOpen?: () => void;
   emptyText?: ReactNode;
   /** When false, options behave as plain action rows (no radio). Default: true. */
   selectable?: boolean;

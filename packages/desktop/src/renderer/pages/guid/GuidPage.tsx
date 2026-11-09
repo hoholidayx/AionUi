@@ -27,8 +27,7 @@ import { useGuidModelSelection } from './hooks/useGuidModelSelection';
 import { useGuidSend } from './hooks/useGuidSend';
 import { useTypewriterPlaceholder } from './hooks/useTypewriterPlaceholder';
 import { ensureBackendMcpCatalog } from '@/renderer/hooks/mcp/catalog';
-import { useImageBackends } from '@/renderer/hooks/mcp/useImageBackends';
-import ImageBackendSelector from '@/renderer/components/agent/ImageBackendSelector';
+import { buildImageBackendMenu, useImageBackends } from '@/renderer/hooks/mcp/useImageBackends';
 import { resolveGuidAssistantDefaults } from './utils/assistantDefaults';
 import SpeechInputButton from '@/renderer/components/chat/SpeechInputButton';
 import { chatFileRefPath, uploadFileRef } from '@/common/types/chatFile';
@@ -169,6 +168,7 @@ const GuidPage: React.FC = () => {
     assistant: selectedAssistantDetail,
     backends: imageBackends,
     resolved: imageBackendsResolved,
+    refreshBackends: refreshImageBackends,
   } = useImageBackends(selectedAssistantId, localeKey, agentSelection.selectedAssistantBackend === 'aionrs');
   const resolvedAssistantDefaults = useMemo(
     () => resolveGuidAssistantDefaults(selectedAssistantDetail),
@@ -651,15 +651,15 @@ const GuidPage: React.FC = () => {
       mcpServers={availableMcpServers.filter((server) => server.purpose !== 'async_image')}
       selectedMcpServerIds={guidSelectedMcpServerIds ?? []}
       onToggleMcpServer={handleToggleMcpServer}
-      imageBackendSelector={
-        agentSelection.selectedAssistantBackend === 'aionrs' ? (
-          <ImageBackendSelector
-            value={selectedImageBackendId}
-            assistantId={selectedAssistantId}
-            onChange={(id) => setImageBackendSelection({ assistantId: selectedAssistantId, id })}
-            disabled={guidInput.loading}
-          />
-        ) : undefined
+      imageBackendMenu={
+        agentSelection.selectedAssistantBackend === 'aionrs'
+          ? buildImageBackendMenu(imageBackends, t, {
+              value: selectedImageBackendId,
+              disabled: guidInput.loading,
+              onChange: (id) => setImageBackendSelection({ assistantId: selectedAssistantId, id }),
+              onOpen: () => void refreshImageBackends(),
+            })
+          : undefined
       }
       speechInputNode={
         <SpeechInputButton onLiveTranscript={handleLiveTranscript} onTranscript={handleSpeechTranscript} />

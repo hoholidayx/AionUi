@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Message } from '@arco-design/web-react';
 import { BackendHttpError } from '@/common/adapter/httpBridge';
 import AionrsSendBox from '@/renderer/pages/conversation/platforms/aionrs/AionrsSendBox';
+import type { ImageBackendMenu } from '@/renderer/hooks/mcp/useImageBackends';
 import type { AionrsModelSelection } from '@/renderer/pages/conversation/platforms/aionrs/useAionrsModelSelection';
 import type { TeamSendBoxRuntime } from '@/renderer/pages/team/components/teamSendRuntime';
 
@@ -70,6 +71,7 @@ vi.mock('@/renderer/components/chat/SendBox', () => ({
     disabled,
     sendDisabled,
     rightTools,
+    tools,
     sendButtonPrefix,
     topRightOverlay,
     onAddToDraft,
@@ -86,6 +88,7 @@ vi.mock('@/renderer/components/chat/SendBox', () => ({
     disabled?: boolean;
     sendDisabled?: boolean;
     rightTools?: React.ReactNode;
+    tools?: React.ReactNode;
     sendButtonPrefix?: React.ReactNode;
     topRightOverlay?: React.ReactNode;
     onAddToDraft?: () => void;
@@ -109,6 +112,7 @@ vi.mock('@/renderer/components/chat/SendBox', () => ({
     });
     return (
       <div>
+        {tools}
         {rightTools}
         {sendButtonPrefix}
         {topRightOverlay}
@@ -132,12 +136,16 @@ vi.mock('@/renderer/components/chat/SendBox', () => ({
 }));
 
 vi.mock('@/renderer/components/agent/AgentModeSelector', () => ({ default: () => null }));
-vi.mock('@/renderer/components/agent/ImageBackendSelector', () => ({
-  default: ({ onChange }: { onChange: (id: string | null) => void }) => (
-    <button type='button' onClick={() => onChange(null)}>
-      Use global default
-    </button>
-  ),
+vi.mock('@/renderer/utils/platform', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/renderer/utils/platform')>()),
+  isElectronDesktop: () => false,
+}));
+vi.mock('@/renderer/hooks/mcp/useImageBackends', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/renderer/hooks/mcp/useImageBackends')>()),
+  useImageBackends: (_assistantId: string | null, _locale: string, enabled: boolean) => ({
+    backends: enabled ? [{ id: 'image-a', name: 'Image A', is_default: true }] : [],
+    refreshBackends: vi.fn(),
+  }),
 }));
 vi.mock('@/renderer/components/chat/CommandQueuePanel', () => ({ default: () => null }));
 vi.mock('@/renderer/components/chat/MobileActionSheet', () => ({
@@ -145,7 +153,13 @@ vi.mock('@/renderer/components/chat/MobileActionSheet', () => ({
   useAttachEntry: () => ({ entries: [], hiddenFileInput: null }),
 }));
 vi.mock('@/renderer/components/chat/ThoughtDisplay', () => ({ default: () => null }));
-vi.mock('@/renderer/components/media/FileAttachButton', () => ({ default: () => null }));
+vi.mock('@/renderer/components/media/FileAttachButton', () => ({
+  default: ({ imageBackendMenu }: { imageBackendMenu?: ImageBackendMenu }) => (
+    <button type='button' onClick={() => imageBackendMenu?.onSelect('image-backend:default')}>
+      Use global default
+    </button>
+  ),
+}));
 vi.mock('@/renderer/components/media/FilePreview', () => ({ default: () => null }));
 vi.mock('@/renderer/components/media/HorizontalFileList', () => ({
   default: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
@@ -299,6 +313,7 @@ vi.mock('@arco-design/web-react', () => ({
 vi.mock('@icon-park/react', () => ({
   Brain: () => null,
   MagicHat: () => null,
+  Picture: () => null,
   Shield: () => null,
 }));
 vi.mock('react-i18next', () => ({

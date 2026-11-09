@@ -5,8 +5,10 @@
  */
 
 import ImageBackendSelector from '@/renderer/components/agent/ImageBackendSelector';
+import { buildImageBackendMenu, useImageBackends } from '@/renderer/hooks/mcp/useImageBackends';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { SWRConfig } from 'swr';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -41,14 +43,16 @@ const renderSelector = (value: string | null, allowed?: string[], defaultBackend
   ]);
   getAssistant.mockResolvedValue({ defaults: { async_image_backend_ids: allowed } });
   const swrConfig = { provider: () => new Map() };
+  const Picker = () => {
+    const { t } = useTranslation();
+    const { backends } = useImageBackends(allowed && 'assistant-a', 'en-US');
+    return (
+      <ImageBackendSelector menu={buildImageBackendMenu(backends, t, { value, disabled, onChange, onOpen: vi.fn() })} />
+    );
+  };
   const view = () => (
     <SWRConfig value={swrConfig}>
-      <ImageBackendSelector
-        value={value}
-        assistantId={allowed && 'assistant-a'}
-        onChange={onChange}
-        disabled={disabled}
-      />
+      <Picker />
     </SWRConfig>
   );
   const rendered = render(view());

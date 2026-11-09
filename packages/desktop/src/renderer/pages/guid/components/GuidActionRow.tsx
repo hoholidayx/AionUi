@@ -7,6 +7,10 @@
 import { ipcBridge } from '@/common';
 import type { IMcpServer, IProvider, TProviderWithModel } from '@/common/config/storage';
 import AgentModeSelector from '@/renderer/components/agent/AgentModeSelector';
+import ImageBackendSelector, {
+  IMAGE_BACKEND_MENU_CLASS,
+  renderImageBackendOptions,
+} from '@/renderer/components/agent/ImageBackendSelector';
 import { DROPDOWN_SEARCH_THRESHOLD } from '@/renderer/components/agent/runtimeSelectorOptions';
 import AionInlineSearchInput from '@/renderer/components/base/AionInlineSearchInput';
 import MobileActionSheet from '@/renderer/components/chat/MobileActionSheet';
@@ -17,6 +21,7 @@ import type {
 import type { AgentModeOption } from '@/renderer/utils/model/agentTypes';
 import type { AgentRuntimeDerivedOption } from '@/renderer/utils/model/agentRuntimeCatalog';
 import { useLayoutContext } from '@/renderer/hooks/context/LayoutContext';
+import type { ImageBackendMenu } from '@/renderer/hooks/mcp/useImageBackends';
 import { getCleanFileNames, FileService } from '@/renderer/services/FileService';
 import { iconColors } from '@/renderer/styles/colors';
 import { isElectronDesktop } from '@/renderer/utils/platform';
@@ -30,6 +35,7 @@ import {
   FolderUpload,
   Lightning,
   Paperclip,
+  Picture,
   Plus,
   Shield,
   UploadOne,
@@ -109,7 +115,7 @@ type GuidActionRowProps = {
   mcpServers: IMcpServer[];
   selectedMcpServerIds: string[];
   onToggleMcpServer: (serverId: string) => void;
-  imageBackendSelector?: React.ReactNode;
+  imageBackendMenu?: ImageBackendMenu;
 
   // Send button
   loading: boolean;
@@ -143,7 +149,7 @@ const GuidActionRow: React.FC<GuidActionRowProps> = ({
   mcpServers,
   selectedMcpServerIds,
   onToggleMcpServer,
-  imageBackendSelector,
+  imageBackendMenu,
   loading,
   isButtonDisabled,
   speechInputNode,
@@ -318,6 +324,17 @@ const GuidActionRow: React.FC<GuidActionRowProps> = ({
       });
     }
 
+    if (isWebUI && imageBackendMenu) {
+      entries.push({
+        key: 'image-backend',
+        icon: <Picture theme='outline' size='16' />,
+        label: imageBackendMenu.title,
+        meta: imageBackendMenu.currentLabel,
+        disabled: imageBackendMenu.disabled,
+        submenu: imageBackendMenu,
+      });
+    }
+
     // Match the conversation send box: WebUI offers both the backend-machine
     // picker and an upload from the phone/current browser device.
     if (isWebUI) {
@@ -427,6 +444,7 @@ const GuidActionRow: React.FC<GuidActionRowProps> = ({
     activeSkillCount,
     activeMcpCount,
     isWebUI,
+    imageBackendMenu,
     openHostFilePicker,
     t,
   ]);
@@ -561,6 +579,20 @@ const GuidActionRow: React.FC<GuidActionRowProps> = ({
           </SubmenuSearchList>
         </Menu.SubMenu>
       )}
+      {isWebUI && imageBackendMenu && (
+        <Menu.SubMenu
+          key='image-backend'
+          title={
+            <div className='flex items-center gap-8px'>
+              <Picture theme='outline' size='16' fill={iconColors.secondary} aria-hidden='true' />
+              <span>{imageBackendMenu.title}</span>
+            </div>
+          }
+          triggerProps={{ trigger: 'click', onVisibleChange: (visible) => visible && imageBackendMenu.onOpen() }}
+        >
+          <div className={IMAGE_BACKEND_MENU_CLASS}>{renderImageBackendOptions(imageBackendMenu)}</div>
+        </Menu.SubMenu>
+      )}
     </Menu>
   );
 
@@ -590,7 +622,11 @@ const GuidActionRow: React.FC<GuidActionRowProps> = ({
               )}
             </span>
           ) : (
-            <Dropdown trigger='hover' onVisibleChange={handlePlusDropdownVisibleChange} droplist={menuContent}>
+            <Dropdown
+              trigger={isWebUI ? 'click' : 'hover'}
+              onVisibleChange={handlePlusDropdownVisibleChange}
+              droplist={menuContent}
+            >
               <span className='flex items-center gap-4px cursor-pointer lh-[1]'>
                 <Button
                   type='secondary'
@@ -651,7 +687,7 @@ const GuidActionRow: React.FC<GuidActionRowProps> = ({
           </div>
         )}
 
-        {imageBackendSelector}
+        {!isWebUI && <ImageBackendSelector menu={imageBackendMenu} />}
         {speechInputNode}
         <Button
           shape='circle'

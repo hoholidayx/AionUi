@@ -8,6 +8,7 @@ import { act, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { LayoutContext } from '@/renderer/hooks/context/LayoutContext';
+import type { ImageBackendMenu } from '@/renderer/hooks/mcp/useImageBackends';
 
 const {
   modelSelectionMock,
@@ -528,16 +529,17 @@ describe('GuidPage', () => {
     }));
     const { rerender } = render(<GuidPage />);
 
-    const picker = capturedGuidActionRowProps.at(-1)?.imageBackendSelector;
-    if (!React.isValidElement<{ onChange: (id: string) => void }>(picker)) throw new Error('Missing image picker');
-    act(() => picker.props.onChange('image-a'));
+    const picker = capturedGuidActionRowProps.at(-1)?.imageBackendMenu as ImageBackendMenu;
+    act(() => picker.onSelect('image-backend:server:image-a'));
     expect(capturedGuidSendDeps.at(-1)?.imageBackendId).toBe('image-a');
 
     availableBackends = [{ id: 'image-b', name: 'Image B', is_default: true }];
     rerender(<GuidPage />);
-    const updatedPicker = capturedGuidActionRowProps.at(-1)?.imageBackendSelector;
-    if (!React.isValidElement<{ value: string }>(updatedPicker)) throw new Error('Missing image picker');
-    expect(updatedPicker.props.value).toBe('image-a');
+    const updatedPicker = capturedGuidActionRowProps.at(-1)?.imageBackendMenu as ImageBackendMenu;
+    expect(updatedPicker.options.find((option) => option.active)).toMatchObject({
+      id: 'image-a',
+      disabled: true,
+    });
     expect(capturedGuidSendDeps.at(-1)?.needsImageBackendSelection).toBe(true);
   });
 
@@ -547,9 +549,8 @@ describe('GuidPage', () => {
       data: isAssistantDetailKey(key) ? assistantDetailFixture : availableBackends,
     }));
     const { rerender } = render(<GuidPage />);
-    const picker = capturedGuidActionRowProps.at(-1)?.imageBackendSelector;
-    if (!React.isValidElement<{ onChange: (id: string) => void }>(picker)) throw new Error('Missing image picker');
-    act(() => picker.props.onChange('image-a'));
+    const picker = capturedGuidActionRowProps.at(-1)?.imageBackendMenu as ImageBackendMenu;
+    act(() => picker.onSelect('image-backend:server:image-a'));
     availableBackends = [];
     rerender(<GuidPage />);
     expect(capturedGuidSendDeps.at(-1)?.imageBackendId).toBeNull();
@@ -562,9 +563,8 @@ describe('GuidPage', () => {
       data: isAssistantDetailKey(key) ? assistantDetailFixture : availableBackends,
     }));
     const { rerender } = render(<GuidPage />);
-    const picker = capturedGuidActionRowProps.at(-1)?.imageBackendSelector;
-    if (!React.isValidElement<{ onChange: (id: string) => void }>(picker)) throw new Error('Missing image picker');
-    act(() => picker.props.onChange('image-a'));
+    const picker = capturedGuidActionRowProps.at(-1)?.imageBackendMenu as ImageBackendMenu;
+    act(() => picker.onSelect('image-backend:server:image-a'));
 
     availableBackends = undefined;
     rerender(<GuidPage />);

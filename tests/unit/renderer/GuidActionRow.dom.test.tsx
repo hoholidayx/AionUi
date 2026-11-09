@@ -65,6 +65,7 @@ vi.mock('@icon-park/react', () => {
     FolderUpload: Icon,
     Lightning: Icon,
     Paperclip: Icon,
+    Picture: Icon,
     Plus: Icon,
     Search: Icon,
     Shield: Icon,
@@ -205,6 +206,25 @@ describe('GuidActionRow skill/MCP submenu search', () => {
     fireEvent.click(screen.getByTestId('attach-host-files'));
 
     await waitFor(() => expect(onFilesPicked).toHaveBeenCalledWith(['/host/project/a.txt']));
+  });
+
+  it.each([true, false])('places the Web image backend in the plus menu with mobile set to %s', (isMobile) => {
+    environment.isMobile = isMobile;
+    environment.isDesktop = false;
+    renderActionRow({
+      imageBackendMenu: {
+        title: 'Image backend',
+        currentLabel: 'Global default',
+        disabled: false,
+        options: [],
+        onOpen: vi.fn(),
+        onSelect: vi.fn(),
+      },
+    });
+
+    expect(screen.getByTestId(isMobile ? 'mobile-action-sheet' : 'dropdown-menu')).toContainElement(
+      screen.getByText('Image backend')
+    );
   });
 
   it('shows both search boxes when skills and MCP servers exceed the threshold', () => {

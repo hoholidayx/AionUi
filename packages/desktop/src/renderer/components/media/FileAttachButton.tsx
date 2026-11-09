@@ -6,6 +6,8 @@
 
 import type { IConversationMcpStatus, IConversationMcpStatusKind } from '@/common/config/storage';
 import { ipcBridge } from '@/common';
+import ImageBackendSelector from '@/renderer/components/agent/ImageBackendSelector';
+import type { ImageBackendMenu } from '@/renderer/hooks/mcp/useImageBackends';
 import { Button, Message, Trigger } from '@arco-design/web-react';
 import { FolderOpen, Lightning, Paperclip, Plus, Right, Shield } from '@icon-park/react';
 import { useConversationContextSafe } from '@/renderer/hooks/context/ConversationContext';
@@ -24,6 +26,7 @@ interface FileAttachButtonProps {
   onLocalFilesAdded?: (files: FileMetadata[]) => void;
   loadedSkills?: string[];
   loadedMcpStatuses?: IConversationMcpStatus[];
+  imageBackendMenu?: ImageBackendMenu;
 }
 
 const MenuItem: React.FC<{
@@ -77,6 +80,7 @@ const FileAttachButton: React.FC<FileAttachButtonProps> = ({
   onLocalFilesAdded,
   loadedSkills,
   loadedMcpStatuses,
+  imageBackendMenu,
 }) => {
   const conversationContext = useConversationContextSafe();
   const { t } = useTranslation();
@@ -276,6 +280,11 @@ const FileAttachButton: React.FC<FileAttachButtonProps> = ({
         </>
       )}
 
+      {imageBackendMenu && (
+        <div className='px-6px'>
+          <ImageBackendSelector menu={imageBackendMenu} inMenu onSelected={() => setOpen(false)} />
+        </div>
+      )}
       {/* 文件操作最常用，在最下（离 + 最近） */}
       <div className='px-6px'>
         {!isDesktop && (
