@@ -99,6 +99,8 @@ export const useAssistantEditor = ({
   const [defaultMcpMode, setDefaultMcpMode] = useState<AssistantMcpDefaultMode>('auto');
   const [asyncImageEnabled, setAsyncImageEnabled] = useState<boolean>();
   const [asyncImageBackendIds, setAsyncImageBackendIds] = useState<string[]>();
+  const [savedMem0Memory, setSavedMem0Memory] = useState<{ enabled: boolean; configured: boolean }>();
+  const [mem0MemoryChoice, setMem0MemoryEnabled] = useState<boolean>();
   const [availableMcpServers, setAvailableMcpServers] = useState<IMcpServer[]>([]);
   const [selectedMcpIds, setSelectedMcpIds] = useState<string[]>([]);
   const [isCreating, setIsCreating] = useState(false);
@@ -207,6 +209,8 @@ export const useAssistantEditor = ({
     setDefaultMcpMode('auto');
     setAsyncImageEnabled(undefined);
     setAsyncImageBackendIds(undefined);
+    setSavedMem0Memory(undefined);
+    setMem0MemoryEnabled(undefined);
     setSelectedMcpIds([]);
   }, []);
 
@@ -226,6 +230,7 @@ export const useAssistantEditor = ({
       }
 
       resetModelAndPermissionDefaults();
+      setMem0MemoryEnabled((choice) => (choice === true ? undefined : choice));
       setEditAgentState(nextAgent);
     },
     [editAgent, resetModelAndPermissionDefaults]
@@ -272,6 +277,10 @@ export const useAssistantEditor = ({
       setDefaultMcpMode(detail.defaults.mcps.mode === 'fixed' ? 'fixed' : 'auto');
       setAsyncImageEnabled(detail.defaults.async_image_enabled ?? true);
       setAsyncImageBackendIds(detail.defaults.async_image_backend_ids);
+      setSavedMem0Memory({
+        enabled: detail.defaults.mem0_memory_enabled ?? false,
+        configured: detail.defaults.mem0_memory_configured ?? false,
+      });
       setSelectedMcpIds(detail.defaults.mcps.value ?? []);
       setAvailableSkills(skillsList);
       setBuiltinAutoSkills(autoSkills);
@@ -459,6 +468,7 @@ export const useAssistantEditor = ({
             : { mode: defaultThoughtLevelMode },
         async_image_enabled: asyncImageEnabled,
         async_image_backend_ids: asyncImageBackendIds,
+        ...(mem0MemoryChoice !== undefined && { mem0_memory_enabled: mem0MemoryChoice }),
       };
       const defaults = {
         ...scalarDefaults,
@@ -650,6 +660,11 @@ export const useAssistantEditor = ({
     setAsyncImageEnabled,
     asyncImageBackendIds,
     setAsyncImageBackendIds,
+    mem0Memory: savedMem0Memory && {
+      enabled: mem0MemoryChoice ?? savedMem0Memory.enabled,
+      configured: savedMem0Memory.configured,
+      setEnabled: setMem0MemoryEnabled,
+    },
     availableMcpServers,
     selectedMcpIds,
     setSelectedMcpIds,

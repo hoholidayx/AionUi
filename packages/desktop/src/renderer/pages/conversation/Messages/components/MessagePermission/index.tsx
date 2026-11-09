@@ -24,23 +24,28 @@ const MessagePermission: React.FC<MessagePermissionProps> = React.memo(({ messag
   const content = message.content || ({} as IMessagePermission['content']);
   const { description, title, action, call_id, command_type } = content;
   const options = Array.isArray(content.options) ? content.options : [];
-  const displayTitle = title || description || t('messages.permissionRequest');
+  const isMemoryDelete = action === 'memory_delete' && command_type === 'memory_delete';
+  const displayTitle = isMemoryDelete
+    ? t('messages.confirmation.memoryDeleteTitle')
+    : title || description || t('messages.permissionRequest');
 
   const panelOptions = useMemo<PermissionPanelOption[]>(
     () =>
-      options.map((option, index) => {
-        const value = option ? String(option.value) : '';
-        const fallbackId = `option_${index}`;
-        const label = option?.label || `${t('messages.option')} ${index + 1}`;
-        return {
-          id: `${value || fallbackId}:${index}`,
-          value,
-          label: t(label, { ...option?.params, defaultValue: label }),
-          intent: classifyLegacyPermission(value),
-          testId: `message-permission-option-${value || fallbackId}`,
-        };
-      }),
-    [options, t]
+      options
+        .filter((option) => !isMemoryDelete || option?.value === 'cancel' || option?.value === 'proceed_once')
+        .map((option, index) => {
+          const value = option ? String(option.value) : '';
+          const fallbackId = `option_${index}`;
+          const label = option?.label || `${t('messages.option')} ${index + 1}`;
+          return {
+            id: `${value || fallbackId}:${index}`,
+            value,
+            label: t(label, { ...option?.params, defaultValue: label }),
+            intent: classifyLegacyPermission(value),
+            testId: `message-permission-option-${value || fallbackId}`,
+          };
+        }),
+    [isMemoryDelete, options, t]
   );
 
   const handleConfirm = useCallback(
@@ -61,9 +66,11 @@ const MessagePermission: React.FC<MessagePermissionProps> = React.memo(({ messag
       requestKey={`${message.id}:${call_id}`}
       testIdPrefix='message-permission'
       title={displayTitle}
-      description={description && description !== displayTitle ? description : undefined}
+      description={!isMemoryDelete && description && description !== displayTitle ? description : undefined}
       operationKind={normalizePermissionOperationKind(action)}
-      detail={command_type}
+      operationLabel={isMemoryDelete ? t('common.delete') : undefined}
+      detail={isMemoryDelete ? description : command_type}
+      detailLabelKey={isMemoryDelete ? 'messages.requestDetails' : undefined}
       options={panelOptions}
       onConfirm={handleConfirm}
     />

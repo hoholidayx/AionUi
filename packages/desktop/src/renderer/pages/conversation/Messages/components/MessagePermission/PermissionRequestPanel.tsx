@@ -24,6 +24,7 @@ type PermissionRequestPanelProps = {
   title: string;
   description?: string;
   operationKind: PermissionOperationKind;
+  operationLabel?: string;
   detail?: string;
   /** i18n key for the detail block label; defaults to messages.command. Lets a
    *  non-command payload (e.g. a raw tool input dump) carry an accurate label. */
@@ -38,6 +39,7 @@ export const PermissionRequestPanel: React.FC<PermissionRequestPanelProps> = ({
   title,
   description,
   operationKind,
+  operationLabel,
   detail,
   detailLabelKey,
   options,
@@ -111,7 +113,7 @@ export const PermissionRequestPanel: React.FC<PermissionRequestPanelProps> = ({
         <div className={styles.heading}>
           <div className={styles.titleRow}>
             <Text className={styles.title}>{title}</Text>
-            <Text className={styles.operationBadge}>{operationKind}</Text>
+            <Text className={styles.operationBadge}>{operationLabel ?? operationKind}</Text>
           </div>
           {description && <Text className={styles.description}>{description}</Text>}
         </div>

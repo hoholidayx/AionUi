@@ -84,6 +84,23 @@ const makeAcpMessage = (): IMessageAcpPermission => ({
   },
 });
 
+const makeMemoryDeleteMessage = (): IMessagePermission => {
+  const message = makeGenericMessage();
+  message.content = {
+    ...message.content,
+    title: 'messages.confirmation.memoryDeleteTitle',
+    description: 'Current memory: <img src=x onerror=alert(1)>',
+    action: 'memory_delete',
+    command_type: 'memory_delete',
+    options: [
+      { label: 'messages.confirmation.keepMemory', value: 'cancel' },
+      { label: 'messages.confirmation.deleteMemoryOnce', value: 'proceed_once' },
+      { label: 'Unexpected option', value: 'proceed_always' },
+    ],
+  };
+  return message;
+};
+
 describe('permission message adapters', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -106,6 +123,29 @@ describe('permission message adapters', () => {
       data: { value: 'proceed_once' },
       always_allow: false,
     });
+    expect(await screen.findByTestId('message-permission-status')).toBeInTheDocument();
+  });
+
+  it('shows the current memory as text and leaves destructive approval unselected', () => {
+    const message = makeMemoryDeleteMessage();
+    const { container } = render(<MessagePermission message={message} />);
+
+    expect(screen.getByText('messages.confirmation.memoryDeleteTitle')).toBeInTheDocument();
+    expect(screen.getByText('common.delete')).toBeInTheDocument();
+    expect(screen.getByText(message.content.description)).toBeInTheDocument();
+    expect(container.querySelector('img')).toBeNull();
+    expect(screen.queryByTestId('message-permission-option-proceed_always')).not.toBeInTheDocument();
+    fireEvent.keyDown(screen.getByTestId('message-permission-card'), { key: 'Enter' });
+    expect(genericInvoke).not.toHaveBeenCalled();
+  });
+
+  it.each(['cancel', 'proceed_once'])('submits the explicit memory decision %s once', async (value) => {
+    render(<MessagePermission message={makeMemoryDeleteMessage()} />);
+
+    fireEvent.click(screen.getByTestId(`message-permission-option-${value}`));
+
+    expect(genericInvoke).toHaveBeenCalledTimes(1);
+    expect(genericInvoke).toHaveBeenCalledWith(expect.objectContaining({ data: { value }, always_allow: false }));
     expect(await screen.findByTestId('message-permission-status')).toBeInTheDocument();
   });
 

@@ -163,6 +163,7 @@ const AssistantSettings: React.FC = () => {
         selectedIds: editor.asyncImageBackendIds,
         setSelectedIds: editor.setAsyncImageBackendIds,
       },
+      mem0Memory: editor.mem0Memory,
     },
     rules: {
       content: editor.editContext,

@@ -459,6 +459,35 @@ describe('useAssistantEditor', () => {
     expect(result.current.asyncImageBackendIds).toEqual([]);
   });
 
+  it.each([false, true])('sends only the Mem0 opt-in choice when saving %s', async (enabled) => {
+    const assistant: AssistantListItem = { id: 'a1', name: 'Existing', sort_order: 1, source: 'user', enabled: true };
+    vi.mocked(ipcBridge.assistants.get.invoke).mockResolvedValueOnce({
+      ...mockAssistantDetail,
+      defaults: { ...mockAssistantDetail.defaults, mem0_memory_enabled: !enabled, mem0_memory_configured: enabled },
+    } as Awaited<ReturnType<typeof ipcBridge.assistants.get.invoke>>);
+    const { result } = renderHook(() => useAssistantEditor({ ...defaultParams, activeAssistant: assistant }));
+
+    await act(() => result.current.handleEdit(assistant));
+    act(() => result.current.mem0Memory?.setEnabled(enabled));
+    await act(() => result.current.handleSave());
+
+    const [request] = vi.mocked(ipcBridge.assistants.update.invoke).mock.lastCall ?? [];
+    expect(request?.defaults?.mem0_memory_enabled).toBe(enabled);
+    expect(request?.defaults).not.toHaveProperty('mem0_memory_configured');
+  });
+
+  it('uses the server default when an old assistant has no Mem0 fields', async () => {
+    const assistant: AssistantListItem = { id: 'a1', name: 'Existing', sort_order: 1, source: 'user', enabled: true };
+    const { result } = renderHook(() => useAssistantEditor({ ...defaultParams, activeAssistant: assistant }));
+
+    await act(() => result.current.handleEdit(assistant));
+    expect(result.current.mem0Memory).toMatchObject({ enabled: false, configured: false });
+    await act(() => result.current.handleSave());
+
+    const [request] = vi.mocked(ipcBridge.assistants.update.invoke).mock.lastCall ?? [];
+    expect(request?.defaults).not.toHaveProperty('mem0_memory_enabled');
+  });
+
   it('clears model and permission defaults when the main agent changes', async () => {
     const assistant: AssistantListItem = {
       id: 'a1',

@@ -519,6 +519,47 @@ describe('AssistantEditorSections', () => {
     expect(setEnabled).toHaveBeenCalledWith(false);
   });
 
+  it.each([
+    { enabled: false, configured: true, canChange: true },
+    { enabled: false, configured: false, canChange: false },
+    { enabled: true, configured: false, canChange: true },
+  ])('allows only available or already enabled Mem0 to change (%o)', ({ enabled, configured, canChange }) => {
+    const setEnabled = vi.fn();
+    renderWithProviders(
+      <AssistantEditorSections
+        editor={createEditor({
+          agent: {
+            value: 'agent-aionrs',
+            setValue: vi.fn(),
+            availableBackends: [backendOption('agent-aionrs', 'aionrs')],
+          },
+          defaults: { mem0Memory: { enabled, configured, setEnabled } },
+        })}
+        activeAssistant={null}
+      />
+    );
+
+    const toggle = screen.getByRole('switch', { name: 'settings.assistantMem0Memory' });
+    expect(toggle).toHaveAttribute('aria-checked', String(enabled));
+    if (canChange) {
+      fireEvent.click(toggle);
+      expect(setEnabled).toHaveBeenCalledWith(!enabled);
+    } else {
+      expect(toggle).toBeDisabled();
+    }
+  });
+
+  it('hides Mem0 opt-in for an unsupported agent', () => {
+    renderWithProviders(
+      <AssistantEditorSections
+        editor={createEditor({ defaults: { mem0Memory: { enabled: false, configured: true, setEnabled: vi.fn() } } })}
+        activeAssistant={null}
+      />
+    );
+
+    expect(screen.queryByRole('switch', { name: 'settings.assistantMem0Memory' })).not.toBeInTheDocument();
+  });
+
   it('prechecks image backends for an old assistant and keeps them out of the general MCP picker', async () => {
     const setSelectedIds = vi.fn();
     const server = (id: string, name: string, purpose: IMcpServer['purpose']): IMcpServer => ({

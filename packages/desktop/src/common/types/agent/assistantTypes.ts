@@ -100,6 +100,8 @@ export interface AssistantDefaults {
   mcps: AssistantDefaultList;
   async_image_enabled?: boolean;
   async_image_backend_ids?: string[];
+  mem0_memory_enabled?: boolean;
+  mem0_memory_configured?: boolean;
 }
 
 export interface AssistantDefaultsRequest {
@@ -110,6 +112,7 @@ export interface AssistantDefaultsRequest {
   mcps?: AssistantDefaultList;
   async_image_enabled?: boolean;
   async_image_backend_ids?: string[];
+  mem0_memory_enabled?: boolean;
 }
 
 export interface AssistantCapabilities {

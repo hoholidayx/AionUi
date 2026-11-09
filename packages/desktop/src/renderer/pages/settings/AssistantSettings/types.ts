@@ -119,6 +119,11 @@ export type AssistantEditorViewModel = {
       selectedIds: string[] | undefined;
       setSelectedIds: (value: string[]) => void;
     };
+    mem0Memory?: {
+      enabled: boolean;
+      configured: boolean;
+      setEnabled: (value: boolean) => void;
+    };
   };
   rules: {
     content: string;

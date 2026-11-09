@@ -57,6 +57,8 @@ type DefaultsSectionProps = {
   defaultMcpMode: 'auto' | 'fixed';
   setDefaultMcpMode: (value: 'auto' | 'fixed') => void;
   asyncImage?: AssistantEditorViewModel['defaults']['asyncImage'];
+  mem0Memory?: AssistantEditorViewModel['defaults']['mem0Memory'];
+  supportsMem0Memory: boolean;
   modelOptions: SelectOption[];
   permissionOptions: Array<{ value: string; label: string; description?: string }>;
   showThoughtLevelDefault: boolean;
@@ -94,6 +96,8 @@ const DefaultsSection: React.FC<DefaultsSectionProps> = ({
   defaultMcpMode,
   setDefaultMcpMode,
   asyncImage,
+  mem0Memory,
+  supportsMem0Memory,
   modelOptions,
   permissionOptions,
   showThoughtLevelDefault,
@@ -118,6 +122,8 @@ const DefaultsSection: React.FC<DefaultsSectionProps> = ({
     thoughtLevelOptions.some((option) => option.value === defaultThoughtLevelValue);
   const newConversationsOnly = t('settings.assistantOnlyNewConversation', { defaultValue: 'New conversations only' });
   const asyncImageLabel = t('settings.mcpPurposeAsyncImage', { defaultValue: 'Asynchronous image generation' });
+  const mem0MemoryLabel = t('settings.assistantMem0Memory');
+  const canEnableMem0Memory = supportsMem0Memory && mem0Memory?.configured === true;
   const enabledMcpServers = mcpServers.filter((server) => server.purpose !== 'async_image');
   const selectedMcpIds = storedMcpIds.filter(
     (id) => !mcpServers.some((server) => server.id === id && server.purpose === 'async_image')
@@ -506,6 +512,22 @@ const DefaultsSection: React.FC<DefaultsSectionProps> = ({
             />
           )}
         </ConfigRow>
+        {mem0Memory && (supportsMem0Memory || mem0Memory.enabled) && (
+          <ConfigRow
+            icon={<Brain theme='outline' size='14' />}
+            label={mem0MemoryLabel}
+            hint={t(
+              canEnableMem0Memory ? 'settings.assistantMem0MemoryHint' : 'settings.assistantMem0MemoryUnavailable'
+            )}
+          >
+            <Switch
+              aria-label={mem0MemoryLabel}
+              checked={mem0Memory.enabled}
+              disabled={!mem0Memory.enabled && !canEnableMem0Memory}
+              onChange={(enabled) => mem0Memory.setEnabled(enabled)}
+            />
+          </ConfigRow>
+        )}
       </div>
       {asyncImage && (
         <div className='mt-16px border-t border-border-2 pt-16px'>
