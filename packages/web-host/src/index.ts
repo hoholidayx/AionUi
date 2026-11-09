@@ -34,6 +34,7 @@ export async function startWebHost(opts: WebHostOptions): Promise<WebHostHandle>
     backendHandle = await startBackend({
       app: opts.app,
       resolveBackend: opts.backend.resolveBackend,
+      local: opts.allowRemote !== true,
       dataDir: opts.dataDir,
       logDir: opts.logDir,
       dirs: opts.dirs,

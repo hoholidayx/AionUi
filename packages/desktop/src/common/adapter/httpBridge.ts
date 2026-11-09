@@ -184,23 +184,15 @@ function isAuthEndpoint(path: string): boolean {
   return path.startsWith(REFRESH_ENDPOINT) || path === '/login' || path === '/logout';
 }
 
-/**
- * Resolve the Core CSRF double-submit token for the current context.
- *
- * The open-source WebUI removed its CSRF layer with the legacy webserver (M6);
- * a double-submit scheme is slated to return in M7. Until then this is a stub
- * that reports "no token available", so the shared session-refresh primitive
- * (`sessionRefresh.ts`) attaches no `x-csrf-token` header and the backend —
- * which enforces no CSRF check here — accepts the request unchanged.
- *
- * It exists as the single seam every state-changing request would call for its
- * token, so restoring CSRF in M7 (and the aionpro superset, whose backend does
- * enforce the double-submit check) only swaps this body — no caller changes.
- *
- * Returns '' — always, for now.
- */
+/** Read the backend's double-submit cookie in the same-origin WebUI. */
 export function resolveCoreCsrfToken(): string {
-  return '';
+  if (!isWebUiBrowserMode()) return '';
+  const prefix = 'aionui-csrf-token=';
+  const cookie = document.cookie
+    .split(';')
+    .map((entry) => entry.trimStart())
+    .find((entry) => entry.startsWith(prefix));
+  return cookie?.slice(prefix.length) ?? '';
 }
 
 function sendHttpRequest(
@@ -210,9 +202,10 @@ function sendHttpRequest(
   body?: unknown
 ): Promise<Response> {
   const url = `${getBaseUrl()}${path}`;
+  const csrfToken = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method.toUpperCase()) ? resolveCoreCsrfToken() : '';
   return fetch(url, {
     method,
-    headers,
+    headers: csrfToken ? { ...headers, 'x-csrf-token': csrfToken } : headers,
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
 }

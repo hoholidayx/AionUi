@@ -86,6 +86,7 @@ export type BackendDirConfig = {
 export type BackendLaunchOptions = {
   app: AppMetadata;
   resolveBackend: BackendBinaryResolver;
+  local?: boolean;
   port?: number;
   dataDir?: string;
   logDir?: string;
@@ -527,7 +528,8 @@ export class BackendLifecycleManager {
 
   constructor(
     private readonly appMeta: AppMetadata,
-    private readonly resolveBackend: BackendBinaryResolver
+    private readonly resolveBackend: BackendBinaryResolver,
+    private readonly local = true
   ) {}
 
   get port(): number {
@@ -665,7 +667,7 @@ export class BackendLifecycleManager {
     const args = buildSpawnArgs({
       port: this._port,
       dbPath,
-      local: true,
+      local: this.local,
       parentPid: process.pid,
       logDir,
       workDir: dirs?.workDir,
@@ -1076,7 +1078,7 @@ export class BackendLifecycleManager {
  * directly to preserve current stop/port getter semantics).
  */
 export async function startBackend(opts: BackendLaunchOptions): Promise<BackendHandle> {
-  const manager = new BackendLifecycleManager(opts.app, opts.resolveBackend);
+  const manager = new BackendLifecycleManager(opts.app, opts.resolveBackend, opts.local);
   const dataDir = opts.dataDir ?? '';
   if (!dataDir) {
     throw new Error('startBackend: dataDir is required');

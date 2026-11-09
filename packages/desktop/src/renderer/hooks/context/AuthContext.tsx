@@ -1,11 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { PREVIEW_SCOPE_KEY_PREFIX } from '@/renderer/pages/conversation/Preview/context/previewScope';
+import { httpRequest } from '@/common/adapter/httpBridge';
 import { refreshSession } from '@/common/adapter/sessionRefresh';
-// M6: CSRF removed with legacy webserver — stub functions for compatibility, re-implement in M7
-const withCsrfToken = <T extends Record<string, unknown>>(data: T): T => data;
-const hasValidCsrfToken = (): boolean => true;
-const clearCookie = (_name: string, _path?: string): void => {};
-const CSRF_COOKIE_NAME = 'csrf-token';
 
 type AuthStatus = 'checking' | 'authenticated' | 'unauthenticated';
 
@@ -51,16 +47,11 @@ const AUTH_USER_ENDPOINT = '/api/auth/user';
 
 const isDesktopRuntime = typeof window !== 'undefined' && Boolean(window.electronAPI);
 
-// Clear expired auth cache including cookies and localStorage
-// 清除过期的认证缓存，包括 Cookie 和 localStorage
+// Clear expired auth and per-user UI state from local storage.
 function clearAuthCache(): void {
   if (typeof window === 'undefined') return;
 
   try {
-    // Clear CSRF cookie
-    clearCookie(CSRF_COOKIE_NAME);
-    clearCookie(CSRF_COOKIE_NAME, '/');
-
     // Clear localStorage auth-related items, plus per-user UI state that must not
     // leak across accounts. Preview scopes are keyed by project id and hold file
     // content, so leaving them behind would show the next user the previous one's
@@ -172,16 +163,6 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
         return { success: true };
       }
 
-      // Check CSRF token availability before login
-      // If token is missing, clear cache and inform user
-      const csrfTokenValid = hasValidCsrfToken();
-      if (!csrfTokenValid) {
-        console.warn('CSRF token missing or invalid, clearing cache');
-        clearAuthCache();
-        // Allow login to proceed anyway - server will set new token
-      }
-
-      // P1 安全修复：登录请求需要 CSRF Token / P1 Security fix: Login needs CSRF token
       // Backend route is /login; web-host's static-server explicitly proxies it.
       const response = await fetch('/login', {
         method: 'POST',
@@ -189,7 +170,7 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
           'Content-Type': 'application/json',
         },
         credentials: 'include',
-        body: JSON.stringify(withCsrfToken({ username, password, remember })),
+        body: JSON.stringify({ username, password, remember }),
       });
 
       const data = (await response.json()) as {
@@ -214,11 +195,6 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
           code = 'tooManyAttempts';
         } else if (response.status >= 500) {
           code = 'serverError';
-        } else if (!csrfTokenValid) {
-          // If we knew CSRF was invalid and login failed, suggest cache clear
-          code = 'csrfError';
-          message = 'Login failed due to cached data. Please clear your browser cache and try again.';
-          shouldClearCache = true;
         }
 
         // Clear cache on CSRF-related errors
@@ -277,15 +253,7 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
     }
 
     try {
-      await fetch('/logout', {
-        method: 'POST',
-        // Logout also needs CSRF token / 登出同样需要 CSRF Token
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify(withCsrfToken({})),
-      });
+      await httpRequest<void>('POST', '/logout');
     } catch (error) {
       console.error('Logout request failed:', error);
     } finally {

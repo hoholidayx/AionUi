@@ -14,13 +14,14 @@ describe('startWebHost', () => {
     vi.clearAllMocks();
   });
 
-  test('Returns handle without initialPassword', async () => {
+  test.each([false, true])('Selects the backend auth mode for allowRemote=%s', async (allowRemote) => {
+    const startBackend = vi.fn().mockResolvedValue({
+      port: 55555,
+      stop: vi.fn().mockResolvedValue(undefined),
+    });
     // Mock backend-launcher
     vi.doMock('../src/backend-launcher.js', () => ({
-      startBackend: vi.fn().mockResolvedValue({
-        port: 55555,
-        stop: vi.fn().mockResolvedValue(undefined),
-      }),
+      startBackend,
     }));
 
     // Mock static-server
@@ -43,6 +44,7 @@ describe('startWebHost', () => {
         userDataPath: '/tmp/test-data',
       },
       staticDir: '/tmp/static',
+      allowRemote,
       backend: {
         kind: 'ownBackend',
         resolveBackend: () => '/bin/backend',
@@ -54,6 +56,7 @@ describe('startWebHost', () => {
     expect('initialPassword' in handle).toBe(false);
     expect(handle.port).toBe(33000);
     expect(handle.backendPort).toBe(55555);
+    expect(startBackend).toHaveBeenCalledWith(expect.objectContaining({ local: !allowRemote }));
 
     await handle.stop();
 

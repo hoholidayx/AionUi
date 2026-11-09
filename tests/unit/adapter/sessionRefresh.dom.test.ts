@@ -5,6 +5,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { httpRequest } from '@/common/adapter/httpBridge';
 import { refreshSession } from '@/common/adapter/sessionRefresh';
 
 type WindowWithPort = { __backendPort?: number };
@@ -18,6 +19,8 @@ describe('refreshSession (WebUI session refresh)', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+    document.cookie = 'aionui-csrf-token=; Max-Age=0; Path=/';
     delete (window as WindowWithPort).__backendPort;
   });
 
@@ -35,10 +38,7 @@ describe('refreshSession (WebUI session refresh)', () => {
     expect(init.body).toBeUndefined();
   });
 
-  it('sends no x-csrf-token header (open-source WebUI has no CSRF layer — M6 removed, M7 restores)', async () => {
-    // resolveCoreCsrfToken() is a stub returning '' here, so the shared refresh
-    // primitive attaches no CSRF header. The aionpro superset resolves a real
-    // token and asserts the header is present instead.
+  it('omits the CSRF header when no CSRF cookie is available', async () => {
     const fetchMock = vi.fn().mockResolvedValue({ ok: true });
     vi.stubGlobal('fetch', fetchMock);
 
@@ -46,6 +46,20 @@ describe('refreshSession (WebUI session refresh)', () => {
 
     const [, init] = fetchMock.mock.calls[0];
     expect(init.headers ?? {}).not.toHaveProperty('x-csrf-token');
+  });
+
+  it('uses the current CSRF cookie for writes and session refresh', async () => {
+    document.cookie = 'aionui-csrf-token=fixture-token; Path=/';
+    const fetchMock = vi.fn().mockImplementation(() => Promise.resolve(new Response(null, { status: 204 })));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await httpRequest('GET', '/api/conversations');
+    await httpRequest('POST', '/api/conversations', {});
+    await expect(refreshSession()).resolves.toBe(true);
+
+    expect(fetchMock.mock.calls[0][1].headers).not.toHaveProperty('x-csrf-token');
+    expect(fetchMock.mock.calls[1][1].headers).toHaveProperty('x-csrf-token', 'fixture-token');
+    expect(fetchMock.mock.calls[2][1].headers).toHaveProperty('x-csrf-token', 'fixture-token');
   });
 
   it('resolves false when the refresh token is also expired (non-ok response)', async () => {
