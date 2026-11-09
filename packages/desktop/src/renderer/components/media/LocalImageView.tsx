@@ -12,7 +12,8 @@ const LocalImageView: React.FC<{
   asyncImage?: AsyncImageRef;
   alt: string;
   className?: string;
-}> = ({ src = '', asyncImage, alt, className }) => {
+  unavailableText?: string;
+}> = ({ src = '', asyncImage, alt, className, unavailableText }) => {
   const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [url, setUrl] = useState(src);
@@ -43,7 +44,7 @@ const LocalImageView: React.FC<{
     let active = true;
     let objectUrl: string | undefined;
     setLoading(true);
-    setUrl(src);
+    setUrl(unavailableText ? '' : src);
     const imageUrl =
       conversationId && attachmentId
         ? ipcBridge.fs.getAsyncImage.invoke({ conversationId, attachmentId }).then((blob) => {
@@ -65,7 +66,7 @@ const LocalImageView: React.FC<{
       active = false;
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-  }, [absolutePath, root, src, conversationId, attachmentId]);
+  }, [absolutePath, root, src, conversationId, attachmentId, unavailableText]);
   if (loading)
     return (
       <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -81,9 +82,9 @@ const LocalImageView: React.FC<{
       </span>
     );
   return url ? (
-    <img src={url} alt={alt} className={className} />
+    <img src={url} alt={alt} className={className} onError={unavailableText ? () => setUrl('') : undefined} />
   ) : (
-    <span>{asyncImage ? t('acp.image.asyncFailure.outputUnavailable') : alt}</span>
+    <span>{unavailableText ?? (asyncImage ? t('acp.image.asyncFailure.outputUnavailable') : alt)}</span>
   );
 };
 

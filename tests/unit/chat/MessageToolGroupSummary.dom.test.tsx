@@ -8,6 +8,7 @@ import React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { IMessageAcpToolCall, IMessageToolCall } from '@/common/chat/chatLib';
+import MessageToolCall from '@/renderer/pages/conversation/Messages/components/MessageToolCall';
 import MessageToolGroupSummary from '@/renderer/pages/conversation/Messages/components/MessageToolGroupSummary';
 
 const mockDownloadFileFromPath = vi.fn().mockResolvedValue(undefined);
@@ -40,6 +41,27 @@ vi.mock('@arco-design/web-react', async () => {
       useMessage: () => [{ success: mockMessageSuccess, error: mockMessageError }, null],
     },
   };
+});
+
+describe('standalone Codex image output', () => {
+  const image = { path: '/fixture/generated.png', mime_type: 'image/png' };
+  const message: IMessageToolCall = {
+    id: 'image-call',
+    type: 'tool_call',
+    content: { call_id: 'image-call', name: 'imageGeneration', args: {}, status: 'completed', image },
+  };
+
+  it('renders the preview and downloads the file without expanding tool details', () => {
+    render(<MessageToolCall message={message} />);
+    expect(screen.getByTestId('local-image')).toHaveAttribute('src', image.path);
+    fireEvent.click(screen.getByLabelText('acp.image.download_aria'));
+    expect(mockDownloadFileFromPath).toHaveBeenCalledWith(image.path, 'generated.png', undefined);
+  });
+
+  it.each(['error', 'canceled'] as const)('hides the preview for a %s call', (status) => {
+    render(<MessageToolCall message={{ ...message, content: { ...message.content, status } }} />);
+    expect(screen.queryByTestId('local-image')).not.toBeInTheDocument();
+  });
 });
 
 describe('MessageToolGroupSummary ACP image output', () => {
@@ -116,7 +138,7 @@ describe('MessageToolGroupSummary ACP image output', () => {
     fireEvent.click(screen.getByText('View Steps · 1'));
     fireEvent.click(screen.getByLabelText('acp.image.download_aria'));
 
-    expect(mockDownloadFileFromPath).toHaveBeenCalledWith(imagePath, 'ig_test_image.png');
+    expect(mockDownloadFileFromPath).toHaveBeenCalledWith(imagePath, 'ig_test_image.png', undefined);
   });
 
   it('shows an error when generated image download fails', async () => {
@@ -151,7 +173,6 @@ describe('MessageToolGroupSummary ACP image output', () => {
     await waitFor(() => {
       expect(mockMessageError).toHaveBeenCalledWith('acp.image.download_error');
     });
-    expect(consoleError).toHaveBeenCalledWith('[MessageToolGroupSummary] Failed to download image:', expect.any(Error));
     expect(mockMessageSuccess).not.toHaveBeenCalled();
     consoleError.mockRestore();
   });

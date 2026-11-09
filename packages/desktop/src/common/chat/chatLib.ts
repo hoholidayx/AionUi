@@ -224,12 +224,24 @@ export type IMessageToolCall = IMessage<
     name: string;
     args: Record<string, any>;
     error?: string;
-    status?: 'running' | 'completed' | 'error';
+    status?: 'running' | 'completed' | 'error' | 'canceled';
     input?: Record<string, any>;
     output?: string;
     description?: string;
+    image?: { path: string; mime_type: string };
   }
 >;
+
+export const isCodexImageToolCall = (content: IMessageToolCall['content']): boolean =>
+  content.name === 'imageGeneration' && (content.args?.type === 'imageGeneration' || Boolean(content.image?.path));
+
+export const mergeToolCallContent = (
+  existing: IMessageToolCall['content'],
+  incoming: IMessageToolCall['content']
+): IMessageToolCall['content'] => {
+  if (existing.image && existing.status === 'completed' && incoming.status === 'running') return existing;
+  return { ...existing, ...incoming };
+};
 
 type IMessageToolGroupConfirmationDetailsBase<Type, Extra extends Record<string, any>> = {
   type: Type;
@@ -1037,7 +1049,7 @@ export const composeMessage = (
       const msg = list[i];
       if (msg.type === 'tool_call' && msg.content.call_id === message.content.call_id) {
         // Create new object instead of mutating original
-        return updateMessage(i, { ...msg, content: { ...msg.content, ...message.content } });
+        return updateMessage(i, { ...msg, content: mergeToolCallContent(msg.content, message.content) });
       }
     }
     // If no existing tool call found, add new one

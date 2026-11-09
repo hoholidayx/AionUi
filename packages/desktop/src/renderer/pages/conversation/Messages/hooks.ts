@@ -15,8 +15,10 @@ import type {
 } from '@/common/chat/chatLib';
 import {
   composeMessage,
+  isCodexImageToolCall,
   mergeAcpToolCallContent,
   mergeTextMessageContent,
+  mergeToolCallContent,
   normalizeAgentStreamError,
   normalizeTextMessageContent,
   preferTextMessageVersion,
@@ -212,7 +214,7 @@ export function composeMessageWithIndex(
       const existingMsg = list[existingIdx];
       if (existingMsg.type === 'tool_call') {
         const newList = list.slice();
-        const merged = { ...existingMsg.content, ...message.content };
+        const merged = mergeToolCallContent(existingMsg.content, message.content);
         newList[existingIdx] = { ...existingMsg, content: merged };
         return newList;
       }
@@ -790,6 +792,9 @@ export function normalizeDbMessage(msg: TMessage): TMessage {
 }
 
 const getMessageMergeKey = (message: TMessage): string => {
+  if (message.type === 'tool_call' && isCodexImageToolCall(message.content)) {
+    return `tool_call:codex-image:${message.content.call_id}`;
+  }
   if (message.msg_id) return `${message.type}:${message.msg_id}`;
   return `id:${message.id}`;
 };
@@ -797,6 +802,15 @@ const getMessageMergeKey = (message: TMessage): string => {
 const preferPersistedOrLiveMessage = (persisted: TMessage, live: TMessage): TMessage => {
   if (persisted.type === 'text' && live.type === 'text') {
     return preferTextMessageVersion(persisted, live);
+  }
+  if (
+    persisted.type === 'tool_call' &&
+    live.type === 'tool_call' &&
+    !persisted.content.image &&
+    live.content.image &&
+    live.content.status === 'completed'
+  ) {
+    return { ...persisted, content: mergeToolCallContent(persisted.content, live.content) };
   }
   if (
     persisted.type === 'acp_tool_call' &&

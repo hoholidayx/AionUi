@@ -200,7 +200,7 @@ function normalizeToolCallStatus(status?: string): NormalizedToolStatus {
 }
 
 export function normalizeToolCall(message: IMessageToolCall): NormalizedToolCall | undefined {
-  const { call_id, name, status, input, output, args, description } = message.content;
+  const { call_id, name, status, input, output, args, description, image } = message.content;
   if (!call_id) return undefined;
 
   const displayInput = input
@@ -216,6 +216,7 @@ export function normalizeToolCall(message: IMessageToolCall): NormalizedToolCall
     description: description || undefined,
     input: displayInput,
     output,
+    imagePath: status === 'completed' ? image?.path : undefined,
   };
 }
 

@@ -1,15 +1,12 @@
 import type { BadgeProps } from '@arco-design/web-react';
-import { Badge, Button, Message, Spin, Tooltip } from '@arco-design/web-react';
+import { Badge, Spin } from '@arco-design/web-react';
 import { IconDown, IconRight } from '@arco-design/web-react/icon';
-import { Checklist, Download, Right } from '@icon-park/react';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import { Checklist, Right } from '@icon-park/react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { ipcBridge } from '@/common';
-import { getAcpImageFileName } from '@/common/chat/acpToolCallOutput';
 import type { NormalizedToolCall, NormalizedToolStatus, ToolMessage } from '@/common/chat/normalizeToolCall';
 import { normalizeToolMessages, hasRunningToolMessages } from '@/common/chat/normalizeToolCall';
-import LocalImageView from '@/renderer/components/media/LocalImageView';
-import { downloadFileFromPath } from '@/renderer/utils/file/download';
+import ToolImagePreview from './ToolImagePreview';
 import './MessageToolGroupSummary.css';
 
 const statusToBadge = (status: NormalizedToolStatus): BadgeProps['status'] => {
@@ -29,27 +26,12 @@ const statusToBadge = (status: NormalizedToolStatus): BadgeProps['status'] => {
 };
 
 const ToolItemDetail: React.FC<{ item: NormalizedToolCall }> = ({ item }) => {
-  const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
   const [fullItem, setFullItem] = useState<NormalizedToolCall | null>(null);
   const [loadingFull, setLoadingFull] = useState(false);
   const [loadError, setLoadError] = useState(false);
   const displayItem = fullItem ?? item;
   const hasDetail = displayItem.input || displayItem.output || item.truncated || item.imagePath;
-  const [messageApi, messageContext] = Message.useMessage();
-  const handleDownloadImage = useCallback(
-    async (path: string) => {
-      try {
-        await downloadFileFromPath(path, getAcpImageFileName(path));
-        messageApi.success(t('acp.image.download_success'));
-      } catch (error) {
-        console.error('[MessageToolGroupSummary] Failed to download image:', error);
-        messageApi.error(t('acp.image.download_error'));
-      }
-    },
-    [messageApi, t]
-  );
-
   const loadFullItem = async () => {
     if (!item.truncated || fullItem || loadingFull || !item.conversationId || !item.messageId) return;
     setLoadingFull(true);
@@ -76,7 +58,6 @@ const ToolItemDetail: React.FC<{ item: NormalizedToolCall }> = ({ item }) => {
 
   return (
     <div className='flex flex-col'>
-      {messageContext}
       <div className='flex flex-row color-#86909C gap-12px items-center'>
         <Badge status={statusToBadge(item.status)} className={item.status === 'running' ? 'badge-breathing' : ''} />
         <span
@@ -116,26 +97,7 @@ const ToolItemDetail: React.FC<{ item: NormalizedToolCall }> = ({ item }) => {
           )}
         </div>
       )}
-      {item.imagePath && (
-        <div className='group relative m-l-20px m-t-8px overflow-hidden rounded border bg-1 p-2 max-w-280px'>
-          <LocalImageView
-            src={item.imagePath}
-            alt={getAcpImageFileName(item.imagePath)}
-            className='max-w-full max-h-320px object-contain rounded'
-          />
-          <Tooltip content={t('acp.image.download')}>
-            <Button
-              aria-label={t('acp.image.download_aria')}
-              className='!absolute end-10px top-10px !h-28px !w-28px !p-0 opacity-0 shadow-sm transition-opacity group-hover:opacity-90 focus:opacity-100'
-              type='secondary'
-              size='mini'
-              shape='circle'
-              icon={<Download theme='outline' size='14' />}
-              onClick={() => void handleDownloadImage(item.imagePath)}
-            />
-          </Tooltip>
-        </div>
-      )}
+      {item.imagePath && <ToolImagePreview path={item.imagePath} />}
     </div>
   );
 };

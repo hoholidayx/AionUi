@@ -15,6 +15,8 @@ import { IconDown, IconRight } from '@arco-design/web-react/icon';
 import { createTwoFilesPatch } from 'diff';
 import React, { useMemo, useState } from 'react';
 import type { BadgeProps } from '@arco-design/web-react';
+import { useConversationContextSafe } from '@/renderer/hooks/context/ConversationContext';
+import ToolImagePreview from './ToolImagePreview';
 import './MessageToolGroupSummary.css';
 
 const statusToBadge = (status: NormalizedToolStatus): BadgeProps['status'] => {
@@ -57,6 +59,7 @@ const ReplacePreview: React.FC<{ message: IMessageToolCall }> = ({ message }) =>
 const MessageToolCall: React.FC<{ message: IMessageToolCall }> = ({ message }) => {
   const { name } = message.content;
   const [expanded, setExpanded] = useState(false);
+  const workspace = useConversationContextSafe()?.workspace;
 
   if (name === 'replace' || name === 'Edit') {
     return <ReplacePreview message={message} />;
@@ -112,6 +115,7 @@ const MessageToolCall: React.FC<{ message: IMessageToolCall }> = ({ message }) =
           )}
         </div>
       )}
+      {normalized.imagePath && <ToolImagePreview path={normalized.imagePath} workspace={workspace} />}
     </div>
   );
 };

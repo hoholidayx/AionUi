@@ -92,7 +92,7 @@ vi.mock('@/renderer/pages/conversation/Messages/components/MessageTips', () => (
 }));
 
 vi.mock('@/renderer/pages/conversation/Messages/components/MessageToolCall', () => ({
-  default: () => <div>tool_call</div>,
+  default: ({ message }: { message: IMessageToolCall }) => <div>{message.content.image?.path ?? 'tool_call'}</div>,
 }));
 
 vi.mock('@/renderer/pages/conversation/Messages/components/MessageToolGroup', () => ({
@@ -275,6 +275,32 @@ describe('MessageList', () => {
       diff: 'diff',
     });
     useTeamPermissionMock.mockReturnValue(null);
+  });
+
+  it('renders a completed Codex image on the original tool row without opening the steps', async () => {
+    const running: IMessageToolCall = {
+      id: 'started',
+      msg_id: 'live-turn',
+      type: 'tool_call',
+      position: 'left',
+      content: { call_id: 'image-call', name: 'imageGeneration', args: { type: 'imageGeneration' }, status: 'running' },
+    };
+    const image = { path: '/fixture/generated.png', mime_type: 'image/png' };
+    const completed: IMessageToolCall = {
+      ...running,
+      id: 'completed',
+      content: { ...running.content, status: 'completed', image },
+    };
+    render(
+      <>
+        <MessageList />
+        <MergeMessagesButton messages={[completed, running]} />
+      </>,
+      { wrapper: ({ children }) => <Wrapper messages={[running]}>{children}</Wrapper> }
+    );
+    fireEvent.click(screen.getByText('merge messages'));
+    expect(await screen.findByText(image.path)).toBeInTheDocument();
+    expect(screen.getAllByTestId('message-tool_call-left')).toHaveLength(1);
   });
 
   it('never renders a plan as a stream row (it belongs to ConversationPlanBar)', () => {
