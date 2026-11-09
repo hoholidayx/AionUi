@@ -1,5 +1,6 @@
 import { ipcBridge } from '@/common';
 import { joinPath } from '@/common/chat/chatLib';
+import type { ToolImageRef } from '@/common/types/chatFile';
 import type { AsyncImageRef } from '@/common/types/platform/acpTypes';
 import { LoadingTwo } from '@icon-park/react';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -10,15 +11,17 @@ import { iconColors } from '@/renderer/styles/colors';
 const LocalImageView: React.FC<{
   src?: string;
   asyncImage?: AsyncImageRef;
+  toolImage?: ToolImageRef;
   alt: string;
   className?: string;
   unavailableText?: string;
-}> = ({ src = '', asyncImage, alt, className, unavailableText }) => {
+}> = ({ src = '', asyncImage, toolImage, alt, className, unavailableText }) => {
   const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [url, setUrl] = useState(src);
-  const conversationId = asyncImage?.conversationId;
+  const conversationId = toolImage?.conversationId ?? asyncImage?.conversationId;
   const attachmentId = asyncImage?.attachmentId;
+  const messageId = toolImage?.messageId;
   // Resolve relative image paths (e.g. ![](./chart.png)) against the conversation
   // workspace = the agent cwd, and pass it as the fs sandbox workspace. Outside a
   // conversation (settings markdown) there is no workspace, so the src is sent
@@ -45,13 +48,18 @@ const LocalImageView: React.FC<{
     let objectUrl: string | undefined;
     setLoading(true);
     setUrl(unavailableText ? '' : src);
-    const imageUrl =
-      conversationId && attachmentId
-        ? ipcBridge.fs.getAsyncImage.invoke({ conversationId, attachmentId }).then((blob) => {
-            if (active) objectUrl = URL.createObjectURL(blob);
-            return objectUrl;
-          })
-        : ipcBridge.fs.getImageBase64.invoke({ path: absolutePath, workspace: root || undefined });
+    const imageBlob =
+      conversationId && messageId
+        ? ipcBridge.fs.getToolImage.invoke({ conversationId, messageId })
+        : conversationId && attachmentId
+          ? ipcBridge.fs.getAsyncImage.invoke({ conversationId, attachmentId })
+          : undefined;
+    const imageUrl = imageBlob
+      ? imageBlob.then((blob) => {
+          if (active) objectUrl = URL.createObjectURL(blob);
+          return objectUrl;
+        })
+      : ipcBridge.fs.getImageBase64.invoke({ path: absolutePath, workspace: root || undefined });
     void imageUrl
       .then((result) => {
         if (active && result) setUrl(result);
@@ -66,7 +74,7 @@ const LocalImageView: React.FC<{
       active = false;
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-  }, [absolutePath, root, src, conversationId, attachmentId, unavailableText]);
+  }, [absolutePath, root, src, conversationId, attachmentId, messageId, unavailableText]);
   if (loading)
     return (
       <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>

@@ -9,7 +9,13 @@ import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ipcBridge } from '@/common';
 import type { MessageCursorPage } from '@/common/adapter/ipcBridge';
-import type { IMessageAcpToolCall, IMessageText, IMessageThinking, TMessage } from '@/common/chat/chatLib';
+import type {
+  IMessageAcpToolCall,
+  IMessageText,
+  IMessageThinking,
+  IMessageToolCall,
+  TMessage,
+} from '@/common/chat/chatLib';
 import {
   MessageListLoadingProvider,
   MessageListProvider,
@@ -122,6 +128,28 @@ function createAsyncImageCard(
   return card;
 }
 
+function createCodexImageCard(
+  callId: string,
+  createdAt: number,
+  status: IMessageToolCall['content']['status']
+): IMessageToolCall {
+  return {
+    id: callId,
+    msg_id: callId,
+    type: 'tool_call',
+    conversation_id: CONVERSATION_ID,
+    position: 'left',
+    created_at: createdAt,
+    content: {
+      call_id: callId,
+      name: 'imageGeneration',
+      args: { type: 'imageGeneration' },
+      status,
+      ...(status === 'completed' ? { image: { path: `/tmp/${callId}.png`, mime_type: 'image/png' } } : {}),
+    },
+  };
+}
+
 function messagePage(items: TMessage[], oldestCursor?: string): MessageCursorPage<TMessage> {
   return {
     items,
@@ -164,7 +192,12 @@ function useAnchorMessageHarness() {
 }
 
 function useAsyncImageRecoveryHarness(key = CONVERSATION_ID) {
-  useMessageLstCache(key, { recoverAsyncImages: true });
+  useMessageLstCache(key, { recoverImageCards: 'async' });
+  return { ...useMessageHarness(), prepend: usePrependHistoryPage() };
+}
+
+function useCodexImageRecoveryHarness() {
+  useMessageLstCache(CONVERSATION_ID, { recoverImageCards: 'codex' });
   return { ...useMessageHarness(), prepend: usePrependHistoryPage() };
 }
 
@@ -339,6 +372,69 @@ describe('message merging', () => {
 
     expect(get).toHaveBeenCalledWith({ conversation_id: CONVERSATION_ID, message_id: pending.id });
     expect(result.current.messages).toEqual([completed, newest]);
+  });
+
+  it('settles an older Codex image in place using its tool call ID instead of its live renderer ID', async () => {
+    const newest = { ...createTextMessage('newest', 'newer than the loaded card'), created_at: 200 };
+    const pending = {
+      ...createCodexImageCard('codex-old', 100, 'running'),
+      id: 'live-renderer-id',
+      msg_id: 'live-turn',
+    };
+    const completed = createCodexImageCard(pending.content.call_id, 100, 'completed');
+    vi.mocked(ipcBridge.database.getConversationMessages.invoke).mockResolvedValue(messagePage([newest]));
+    const get = vi.mocked(ipcBridge.database.getConversationMessage.invoke);
+    get.mockClear();
+    get.mockResolvedValue(completed);
+    const { result } = renderHook(() => useCodexImageRecoveryHarness(), { wrapper: CacheWrapper });
+    await act(async () => {});
+    act(() => result.current.prepend([pending]));
+
+    await reconnect();
+
+    expect(get).toHaveBeenCalledWith({ conversation_id: CONVERSATION_ID, message_id: completed.id });
+    expect(result.current.messages).toEqual([completed, newest]);
+  });
+
+  it('restores a Codex image that started and completed while the socket was disconnected', async () => {
+    const beforeGap = { ...createTextMessage('before-gap', 'last text before disconnect'), created_at: 100 };
+    const afterGap = { ...createTextMessage('after-gap', 'newer live text'), created_at: 300 };
+    const unseen = createCodexImageCard('codex-unseen', 150, 'completed');
+    vi.mocked(ipcBridge.database.getConversationMessages.invoke)
+      .mockResolvedValueOnce(messagePage([beforeGap]))
+      .mockResolvedValueOnce(messagePage([afterGap], 'latest-page-cursor'))
+      .mockResolvedValueOnce(messagePage([beforeGap, unseen]))
+      .mockResolvedValue(messagePage([unseen, afterGap]));
+    const { result } = renderHook(() => useCodexImageRecoveryHarness(), { wrapper: CacheWrapper });
+    await act(async () => {});
+    act(() => result.current.addOrUpdateMessage(afterGap));
+    await flushMessageQueue();
+
+    await reconnect();
+    await reconnect();
+
+    expect(result.current.messages).toEqual([beforeGap, unseen, afterGap]);
+  });
+
+  it('does not revive a failed Codex image call when a stale reconnect response arrives', async () => {
+    const pending = createCodexImageCard('codex-race', 100, 'running');
+    const failed = createCodexImageCard(pending.id, 100, 'error');
+    vi.mocked(ipcBridge.database.getConversationMessages.invoke).mockResolvedValue(messagePage([pending]));
+    let settle: ((card: TMessage) => void) | undefined;
+    vi.mocked(ipcBridge.database.getConversationMessage.invoke).mockReturnValue(
+      new Promise((resolve) => {
+        settle = resolve;
+      })
+    );
+    const { result } = renderHook(() => useCodexImageRecoveryHarness(), { wrapper: CacheWrapper });
+    await act(async () => {});
+    await reconnect();
+
+    act(() => result.current.addOrUpdateMessage(failed));
+    await flushMessageQueue();
+    await act(async () => settle?.(pending));
+
+    expect(result.current.messages).toEqual([failed]);
   });
 
   it('finds a card whose initial and terminal frames were missed even beyond the newest page', async () => {

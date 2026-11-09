@@ -8,22 +8,25 @@ import React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { IMessageAcpToolCall, IMessageToolCall } from '@/common/chat/chatLib';
+import type { ToolImageRef } from '@/common/types/chatFile';
 import MessageToolCall from '@/renderer/pages/conversation/Messages/components/MessageToolCall';
 import MessageToolGroupSummary from '@/renderer/pages/conversation/Messages/components/MessageToolGroupSummary';
 
 const mockDownloadFileFromPath = vi.fn().mockResolvedValue(undefined);
+const mockDownloadToolImage = vi.fn().mockResolvedValue(undefined);
 const mockMessageSuccess = vi.fn();
 const mockMessageError = vi.fn();
 
 vi.mock('@/renderer/components/media/LocalImageView', () => ({
   __esModule: true,
-  default: ({ src, alt, className }: { src: string; alt: string; className?: string }) => (
-    <img src={src} alt={alt} className={className} data-testid='local-image' />
+  default: ({ src, alt, toolImage }: { src?: string; alt: string; toolImage?: ToolImageRef }) => (
+    <img src={src} alt={alt} data-testid='local-image' data-tool-message={toolImage?.messageId} />
   ),
 }));
 
 vi.mock('@/renderer/utils/file/download', () => ({
   downloadFileFromPath: (...args: unknown[]) => mockDownloadFileFromPath(...args),
+  downloadToolImage: (...args: unknown[]) => mockDownloadToolImage(...args),
 }));
 
 vi.mock('react-i18next', () => ({
@@ -46,16 +49,21 @@ vi.mock('@arco-design/web-react', async () => {
 describe('standalone Codex image output', () => {
   const image = { path: '/fixture/generated.png', mime_type: 'image/png' };
   const message: IMessageToolCall = {
-    id: 'image-call',
+    id: 'live-ui-message-id',
+    conversation_id: 'conv-1',
     type: 'tool_call',
     content: { call_id: 'image-call', name: 'imageGeneration', args: {}, status: 'completed', image },
   };
 
   it('renders the preview and downloads the file without expanding tool details', () => {
     render(<MessageToolCall message={message} />);
-    expect(screen.getByTestId('local-image')).toHaveAttribute('src', image.path);
+    expect(screen.getByTestId('local-image')).toHaveAttribute('data-tool-message', 'image-call');
     fireEvent.click(screen.getByLabelText('acp.image.download_aria'));
-    expect(mockDownloadFileFromPath).toHaveBeenCalledWith(image.path, 'generated.png', undefined);
+    expect(mockDownloadToolImage).toHaveBeenCalledWith(
+      { conversationId: 'conv-1', messageId: 'image-call' },
+      'generated.png'
+    );
+    expect(mockDownloadFileFromPath).not.toHaveBeenCalled();
   });
 
   it.each(['error', 'canceled'] as const)('hides the preview for a %s call', (status) => {
@@ -138,7 +146,7 @@ describe('MessageToolGroupSummary ACP image output', () => {
     fireEvent.click(screen.getByText('View Steps · 1'));
     fireEvent.click(screen.getByLabelText('acp.image.download_aria'));
 
-    expect(mockDownloadFileFromPath).toHaveBeenCalledWith(imagePath, 'ig_test_image.png', undefined);
+    expect(mockDownloadFileFromPath).toHaveBeenCalledWith(imagePath, 'ig_test_image.png');
   });
 
   it('shows an error when generated image download fails', async () => {

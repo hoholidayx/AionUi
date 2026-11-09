@@ -1,18 +1,23 @@
 import { getAcpImageFileName } from '@/common/chat/acpToolCallOutput';
+import type { ToolImageRef } from '@/common/types/chatFile';
 import LocalImageView from '@/renderer/components/media/LocalImageView';
-import { downloadFileFromPath } from '@/renderer/utils/file/download';
+import { downloadFileFromPath, downloadToolImage } from '@/renderer/utils/file/download';
 import { Button, Message, Tooltip } from '@arco-design/web-react';
 import { Download } from '@icon-park/react';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 
-const ToolImagePreview: React.FC<{ path: string; workspace?: string }> = ({ path, workspace }) => {
+const ToolImagePreview: React.FC<{ path: string; toolImage?: ToolImageRef }> = ({ path, toolImage }) => {
   const { t } = useTranslation();
   const [messageApi, messageContext] = Message.useMessage();
   const fileName = getAcpImageFileName(path);
   const download = async () => {
     try {
-      await downloadFileFromPath(path, fileName, workspace);
+      if (toolImage) {
+        await downloadToolImage(toolImage, fileName);
+      } else {
+        await downloadFileFromPath(path, fileName);
+      }
       messageApi.success(t('acp.image.download_success'));
     } catch (error) {
       console.error('[ToolImagePreview] Failed to download image:', error);
@@ -24,7 +29,8 @@ const ToolImagePreview: React.FC<{ path: string; workspace?: string }> = ({ path
     <div className='group relative m-l-20px m-t-8px overflow-hidden rounded border bg-1 p-2 max-w-280px'>
       {messageContext}
       <LocalImageView
-        src={path}
+        src={toolImage ? undefined : path}
+        toolImage={toolImage}
         alt={fileName}
         className='max-w-full max-h-320px object-contain rounded'
         unavailableText={t('acp.image.asyncFailure.outputUnavailable')}

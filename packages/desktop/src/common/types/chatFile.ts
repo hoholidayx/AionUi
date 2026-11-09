@@ -26,6 +26,9 @@ export type ChatFileRef =
   | { kind: 'upload'; path: string }
   | { kind: 'local'; path: string };
 
+/** A generated tool image addressed by its conversation and tool-call ID. */
+export type ToolImageRef = { conversationId: string; messageId: string };
+
 /**
  * How `POST /api/fs/content` encodes returned file content. Mirrors the aioncore
  * `ContentEncoding` (serde lowercase): `utf8` for text, `dataurl` for images

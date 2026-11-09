@@ -19,6 +19,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 const hoisted = vi.hoisted(() => ({
   getImageBase64: vi.fn(() => Promise.resolve<string | null>(null)),
   getAsyncImage: vi.fn(),
+  getToolImage: vi.fn(),
 }));
 
 vi.mock('react-i18next', () => ({
@@ -31,6 +32,7 @@ vi.mock('@/common', () => ({
     fs: {
       getImageBase64: { invoke: hoisted.getImageBase64 },
       getAsyncImage: { invoke: hoisted.getAsyncImage },
+      getToolImage: { invoke: hoisted.getToolImage },
     },
   },
 }));
@@ -42,6 +44,7 @@ afterEach(() => {
   cleanup();
   hoisted.getImageBase64.mockClear();
   hoisted.getAsyncImage.mockReset();
+  hoisted.getToolImage.mockReset();
   vi.unstubAllGlobals();
 });
 
@@ -84,6 +87,16 @@ it('explains when the asynchronous image attachment is unavailable', async () =>
 
   expect(await screen.findByText('acp.image.asyncFailure.outputUnavailable')).toBeInTheDocument();
   expect(screen.queryByRole('img')).not.toBeInTheDocument();
+});
+
+it('requests a generated tool image by conversation and call ID even when the file is unavailable', async () => {
+  hoisted.getToolImage.mockResolvedValueOnce(undefined);
+  const ref = { conversationId: 'conv-1', messageId: 'image-call' };
+  render(<LocalImageView toolImage={ref} alt='demo' unavailableText='Image unavailable' />);
+
+  expect(await screen.findByText('Image unavailable')).toBeInTheDocument();
+  expect(hoisted.getToolImage).toHaveBeenCalledWith(ref);
+  expect(hoisted.getImageBase64).not.toHaveBeenCalled();
 });
 
 const renderInConversation = (workspace: string | undefined, src: string) =>

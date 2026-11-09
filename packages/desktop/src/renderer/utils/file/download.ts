@@ -5,7 +5,7 @@
  */
 
 import { ipcBridge } from '@/common';
-import type { ChatFileRef } from '@/common/types/chatFile';
+import type { ChatFileRef, ToolImageRef } from '@/common/types/chatFile';
 import type { AsyncImageRef } from '@/common/types/platform/acpTypes';
 import { buildFileStreamUrl } from './fileUrls';
 import { base64ToBlob, BINARY_MIME_MAP } from './base64';
@@ -53,6 +53,12 @@ export async function downloadFileFromRef(file: ChatFileRef, file_name: string):
 
 export async function downloadAsyncImage(file: AsyncImageRef, fileName: string): Promise<void> {
   const blob = await ipcBridge.fs.getAsyncImage.invoke(file);
+  triggerBlobDownload(blob, fileName);
+}
+
+/** Download the output of a tool call using its conversation-scoped reference. */
+export async function downloadToolImage(file: ToolImageRef, fileName: string): Promise<void> {
+  const blob = await ipcBridge.fs.getToolImage.invoke(file);
   triggerBlobDownload(blob, fileName);
 }
 

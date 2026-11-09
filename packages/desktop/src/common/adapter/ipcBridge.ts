@@ -98,7 +98,7 @@ import type {
 import type { AgentMetadata } from '@/renderer/utils/model/agentTypes';
 import type { Theme } from '@/common/theme/types';
 import type { AttachFolderRequest, ProjectDetailDto, ProjectEntryDto } from '@/common/types/project';
-import type { ChatFileRef, ContentEncoding } from '@/common/types/chatFile';
+import type { ChatFileRef, ContentEncoding, ToolImageRef } from '@/common/types/chatFile';
 import type { ProtocolDetectionRequest, ProtocolDetectionResponse } from '../utils/protocolDetector';
 import {
   buildCreateConversationBody,
@@ -884,6 +884,16 @@ export const fs = {
         `/api/conversations/${encodeURIComponent(conversationId)}/async-images/${encodeURIComponent(attachmentId)}`
       );
       if (blob.type !== 'image/png' || blob.size === 0) throw new Error('Invalid generated image');
+      return blob;
+    },
+  },
+  getToolImage: {
+    provider: () => {},
+    invoke: async ({ conversationId, messageId }: ToolImageRef): Promise<Blob> => {
+      const blob = await httpGetBlob(
+        `/api/conversations/${encodeURIComponent(conversationId)}/messages/${encodeURIComponent(messageId)}/image`
+      );
+      if (!blob.type.startsWith('image/') || blob.size === 0) throw new Error('Invalid generated image');
       return blob;
     },
   },

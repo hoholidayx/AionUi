@@ -63,7 +63,7 @@ const AcpChat: React.FC<{
   forkCapability,
   promptCapability,
 }) => {
-  useMessageLstCache(conversation_id);
+  useMessageLstCache(conversation_id, { recoverImageCards: backend === 'codex' ? 'codex' : undefined });
   usePendingConfirmationsRecovery(conversation_id);
   usePlanRecovery(conversation_id);
   const teamPermission = useTeamPermission();

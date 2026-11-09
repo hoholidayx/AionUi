@@ -11,6 +11,7 @@ import type {
   IMessageAcpToolCall,
   IMessageText,
   IMessageTips,
+  IMessageToolCall,
   TMessage,
 } from '@/common/chat/chatLib';
 import {
@@ -806,9 +807,11 @@ const preferPersistedOrLiveMessage = (persisted: TMessage, live: TMessage): TMes
   if (
     persisted.type === 'tool_call' &&
     live.type === 'tool_call' &&
-    !persisted.content.image &&
-    live.content.image &&
-    live.content.status === 'completed'
+    ((!persisted.content.image && live.content.image && live.content.status === 'completed') ||
+      (isCodexImageCard(live) &&
+        persisted.content.status === 'running' &&
+        live.content.status !== undefined &&
+        live.content.status !== 'running'))
   ) {
     return { ...persisted, content: mergeToolCallContent(persisted.content, live.content) };
   }
@@ -822,14 +825,28 @@ const preferPersistedOrLiveMessage = (persisted: TMessage, live: TMessage): TMes
   return persisted;
 };
 
+type RecoverableImageCard = IMessageAcpToolCall | IMessageToolCall;
+type ImageCardPredicate = (message: TMessage | null | undefined) => message is RecoverableImageCard;
+
 function isAsyncImageCard(message: TMessage | null | undefined): message is IMessageAcpToolCall {
   return message?.type === 'acp_tool_call' && Boolean(getAcpAsyncImage(message.content?.update));
 }
 
-function mergeRecoveredAsyncImageCards(
+function isCodexImageCard(message: TMessage | null | undefined): message is IMessageToolCall {
+  return message?.type === 'tool_call' && isCodexImageToolCall(message.content);
+}
+
+function isPendingImageCard(message: RecoverableImageCard): boolean {
+  if (message.type === 'tool_call') return message.content.status === 'running';
+  const { status } = message.content.update;
+  return status === 'pending' || status === 'in_progress';
+}
+
+function mergeRecoveredImageCards(
   conversationId: string,
   currentList: TMessage[],
-  cards: IMessageAcpToolCall[]
+  cards: RecoverableImageCard[],
+  isImageCard: ImageCardPredicate
 ): TMessage[] {
   const recovered = new Map(
     cards.filter((card) => card.conversation_id === conversationId).map((card) => [getMessageMergeKey(card), card])
@@ -837,7 +854,7 @@ function mergeRecoveredAsyncImageCards(
   if (!recovered.size) return currentList;
 
   const merged = currentList.map((message) => {
-    if (message.conversation_id !== conversationId || !isAsyncImageCard(message)) return message;
+    if (message.conversation_id !== conversationId || !isImageCard(message)) return message;
     const key = getMessageMergeKey(message);
     const persisted = recovered.get(key);
     if (!persisted) return message;
@@ -858,13 +875,14 @@ function mergeRecoveredAsyncImageCards(
   return merged;
 }
 
-async function loadAsyncImageCardsSince(
+async function loadImageCardsSince(
   conversationId: string,
   newestKnownAt: number | null,
+  isImageCard: ImageCardPredicate,
   isCurrent: () => boolean
-): Promise<{ cards: IMessageAcpToolCall[]; newestAt: number | null }> {
-  const isNewCard = (message: TMessage): message is IMessageAcpToolCall =>
-    isAsyncImageCard(message) &&
+): Promise<{ cards: RecoverableImageCard[]; newestAt: number | null }> {
+  const isNewCard = (message: TMessage): message is RecoverableImageCard =>
+    isImageCard(message) &&
     (newestKnownAt === null || message.created_at === undefined || message.created_at >= newestKnownAt);
   let page = await loadLatestConversationMessages(conversationId);
   const newestAt = page.items.at(-1)?.created_at ?? newestKnownAt;
@@ -1019,7 +1037,10 @@ export const useLoadAnchorMessageWindow = (conversationId?: string) => {
   );
 };
 
-export const useMessageLstCache = (key: string, { recoverAsyncImages = false } = {}) => {
+export const useMessageLstCache = (
+  key: string,
+  { recoverImageCards }: { recoverImageCards?: 'async' | 'codex' } = {}
+) => {
   const update = useUpdateMessageList();
   const list = useMessageList();
   const setLoading = useUpdateMessageListLoading();
@@ -1081,8 +1102,9 @@ export const useMessageLstCache = (key: string, { recoverAsyncImages = false } =
   }, [key, loadMessages, setLoading, setPagination]);
 
   useEffect(() => {
-    if (!key || !recoverAsyncImages) return;
+    if (!key || !recoverImageCards) return;
 
+    const isImageCard: ImageCardPredicate = recoverImageCards === 'codex' ? isCodexImageCard : isAsyncImageCard;
     let active = true;
     let revision = 0;
     const unsubscribe = ipcBridge.realtime.reconnected.on(() => {
@@ -1092,25 +1114,35 @@ export const useMessageLstCache = (key: string, { recoverAsyncImages = false } =
       // Existing pending cards can be outside the recent history window.
       // Newly created cards may be absent entirely after a stream gap.
       const pending = listRef.current.filter(
-        (message) =>
-          message.conversation_id === key &&
-          isAsyncImageCard(message) &&
-          (message.content.update.status === 'pending' || message.content.update.status === 'in_progress')
+        (message): message is RecoverableImageCard =>
+          message.conversation_id === key && isImageCard(message) && isPendingImageCard(message)
       );
-      const newest = loadAsyncImageCardsSince(key, newestKnownAt.current, isCurrent).then(({ cards, newestAt }) => {
-        if (!isCurrent()) return;
-        newestKnownAt.current = newestAt;
-        update((currentList) => mergeRecoveredAsyncImageCards(key, currentList, cards));
-      });
-      const unfinished = pending.map(async ({ id }) => {
-        const card = await ipcBridge.database.getConversationMessage.invoke({ conversation_id: key, message_id: id });
-        if (isCurrent() && isAsyncImageCard(card)) {
-          update((currentList) => mergeRecoveredAsyncImageCards(key, currentList, [card]));
+      const merge = (cards: RecoverableImageCard[]) => {
+        update((currentList) =>
+          isCurrent() ? mergeRecoveredImageCards(key, currentList, cards, isImageCard) : currentList
+        );
+      };
+      const newest = loadImageCardsSince(key, newestKnownAt.current, isImageCard, isCurrent).then(
+        ({ cards, newestAt }) => {
+          if (!isCurrent()) return;
+          newestKnownAt.current = newestAt;
+          merge(cards);
+        }
+      );
+      const unfinished = pending.map(async (message) => {
+        // Codex live rows use a renderer ID. Aion persists them by tool call ID.
+        const messageId = message.type === 'tool_call' ? message.content.call_id : message.id;
+        const card = await ipcBridge.database.getConversationMessage.invoke({
+          conversation_id: key,
+          message_id: messageId,
+        });
+        if (isCurrent() && isImageCard(card)) {
+          merge([card]);
         }
       });
       void Promise.allSettled([newest, ...unfinished]).then((results) => {
         if (isCurrent() && results.some((result) => result.status === 'rejected')) {
-          console.warn('[useMessageLstCache] Could not reconcile all asynchronous image cards after reconnect');
+          console.warn('[useMessageLstCache] Could not reconcile all image cards after reconnect');
         }
       });
     });
@@ -1118,7 +1150,7 @@ export const useMessageLstCache = (key: string, { recoverAsyncImages = false } =
       active = false;
       unsubscribe();
     };
-  }, [key, recoverAsyncImages, update]);
+  }, [key, recoverImageCards, update]);
 
   useEffect(() => {
     if (!key) {

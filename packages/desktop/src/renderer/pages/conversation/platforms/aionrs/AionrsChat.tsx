@@ -60,7 +60,7 @@ const AionrsChat: React.FC<{
   assistantId,
   forkCapability,
 }) => {
-  useMessageLstCache(conversation_id, { recoverAsyncImages: true });
+  useMessageLstCache(conversation_id, { recoverImageCards: 'async' });
   usePendingConfirmationsRecovery(conversation_id);
   usePlanRecovery(conversation_id);
   const conversationValue = useMemo<ConversationContextValue>(() => {
