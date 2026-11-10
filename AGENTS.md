@@ -108,11 +108,10 @@ node scripts/check-i18n.js
 
 ### Before Pushing
 
-AI agents must not push unless explicitly asked. When pushing, use `just push`, never `git push`:
+In the owner's Aion workspace, commit on local `main` by default. When the user requests a push, verify that `origin` is the owner's repository and use its `main` branch. Use a feature branch or pull request only when requested.
 
 ```bash
-just push                          # lint → format-check → typecheck → test → git push
-just push -u origin feat/branch    # same checks, with extra git push args
+just push origin main              # lint → format-check → typecheck → test → push
 ```
 
 Any step that fails aborts the push. Fix the issue, commit, then retry.
