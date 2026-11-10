@@ -25,7 +25,6 @@
     "deleteTitle": "Delete",
     "deleteConfirm": "Are you sure you want to delete this chat?",
     "confirmDelete": "Delete",
-    "deleteNamedConversation": "Permanently delete “{{name}}” from Aion?",
     "deleteCodexHistory": "Also permanently delete Codex history",
     "deleteCodexHistoryWarning": "This permanently removes the Codex thread and its spawned subagent threads. Image files stored separately in the Codex data directory are kept.",
     "deleteCodexHistoryRetry": "Codex history deletion could not be completed. Your Aion chat is still available. Select Codex history deletion to retry.",

@@ -29,7 +29,6 @@
     "deleteTitle": "刪除",
     "deleteConfirm": "確定要刪除此對話嗎？",
     "confirmDelete": "刪除",
-    "deleteNamedConversation": "永久刪除 Aion 中的「{{name}}」？",
     "deleteCodexHistory": "同時永久刪除 Codex 歷史",
     "deleteCodexHistoryWarning": "此操作會永久刪除 Codex 執行緒及其衍生的子代理執行緒。獨立儲存在 Codex 資料目錄的圖片檔案會保留。",
     "deleteCodexHistoryRetry": "Codex 歷史刪除尚未完成，Aion 對話仍可查看。勾選刪除 Codex 歷史即可重試。",

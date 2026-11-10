@@ -29,7 +29,6 @@
     "deleteTitle": "Sil",
     "deleteConfirm": "Bu sohbeti silmek istediğinizden emin misiniz?",
     "confirmDelete": "Sil",
-    "deleteNamedConversation": "“{{name}}” Aion’dan kalıcı olarak silinsin mi?",
     "deleteCodexHistory": "Codex geçmişini de kalıcı olarak sil",
     "deleteCodexHistoryWarning": "Bu işlem Codex oturumunu ve başlattığı alt ajan oturumlarını kalıcı olarak siler. Codex veri dizininde ayrı saklanan görseller kalır.",
     "deleteCodexHistoryRetry": "Codex geçmişi silinemedi. Aion sohbetiniz hâlâ erişilebilir. Yeniden denemek için Codex geçmişini silme seçeneğini işaretleyin.",

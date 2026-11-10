@@ -746,7 +746,6 @@ export type I18nKey =
   | 'conversation.history.deleteCodexHistoryWarning'
   | 'conversation.history.deleteConfirm'
   | 'conversation.history.deleteFailed'
-  | 'conversation.history.deleteNamedConversation'
   | 'conversation.history.deleteSuccess'
   | 'conversation.history.deleteTitle'
   | 'conversation.history.deleting'

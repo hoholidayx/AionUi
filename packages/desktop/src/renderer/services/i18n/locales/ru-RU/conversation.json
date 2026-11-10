@@ -25,7 +25,6 @@
     "deleteTitle": "Удалить",
     "deleteConfirm": "Вы уверены, что хотите удалить этот чат?",
     "confirmDelete": "Удалить",
-    "deleteNamedConversation": "Удалить «{{name}}» из Aion навсегда?",
     "deleteCodexHistory": "Также удалить историю Codex навсегда",
     "deleteCodexHistoryWarning": "Будут навсегда удалены сеанс Codex и созданные им сеансы подагентов. Изображения, сохранённые отдельно в каталоге данных Codex, останутся.",
     "deleteCodexHistoryRetry": "Не удалось завершить удаление истории Codex. Чат Aion всё ещё доступен. Выберите удаление истории Codex, чтобы повторить попытку.",

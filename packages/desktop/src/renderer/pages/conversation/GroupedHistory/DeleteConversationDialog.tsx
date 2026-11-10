@@ -25,7 +25,7 @@ const DeleteConversationDialog: React.FC<DeleteConversationDialogProps> = ({
   deleteLocal,
 }) => {
   const { t } = useTranslation();
-  const [option, setOption] = useState<'unavailable' | 'available' | 'retry_required' | undefined>();
+  const [option, setOption] = useState<Awaited<ReturnType<typeof ipcBridge.conversation.deleteOptions.invoke>>>();
   const [includeCodex, setIncludeCodex] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<'local' | 'codex' | null>(null);
@@ -83,14 +83,14 @@ const DeleteConversationDialog: React.FC<DeleteConversationDialogProps> = ({
       okButtonProps={{ status: 'danger', disabled: option === undefined }}
       getPopupContainer={() => document.body}
     >
-      <p>{t('conversation.history.deleteNamedConversation', { name })}</p>
+      <p>{t('settings.archived.deleteConfirmContent', { name })}</p>
       {(option === 'available' || option === 'retry_required') && (
         <div className='flex flex-col gap-8px'>
           <Checkbox checked={includeCodex} onChange={setIncludeCodex} disabled={deleting}>
             {t('conversation.history.deleteCodexHistory')}
           </Checkbox>
           {includeCodex && <Alert type='warning' content={t('conversation.history.deleteCodexHistoryWarning')} />}
-          {option === 'retry_required' && (
+          {option === 'retry_required' && error !== 'codex' && (
             <Alert type='warning' content={t('conversation.history.deleteCodexHistoryRetry')} />
           )}
         </div>
@@ -99,9 +99,7 @@ const DeleteConversationDialog: React.FC<DeleteConversationDialogProps> = ({
         <Alert
           className='mt-8px'
           type='error'
-          content={
-            error === 'codex' ? t('conversation.history.deleteCodexHistoryRetry') : t('settings.archived.deleteFailed')
-          }
+          content={error === 'codex' ? t('conversation.history.deleteCodexHistoryRetry') : t('common.deleteFailed')}
         />
       )}
     </Modal>

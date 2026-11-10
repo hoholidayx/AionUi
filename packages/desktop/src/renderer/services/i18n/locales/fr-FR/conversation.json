@@ -25,7 +25,6 @@
     "deleteTitle": "Supprimer",
     "deleteConfirm": "Êtes-vous sûr de vouloir supprimer ce chat ?",
     "confirmDelete": "Supprimer",
-    "deleteNamedConversation": "Supprimer définitivement « {{name}} » d’Aion ?",
     "deleteCodexHistory": "Supprimer aussi définitivement l’historique Codex",
     "deleteCodexHistoryWarning": "Cette action supprime définitivement le fil Codex et les fils des sous-agents qu’il a lancés. Les images enregistrées séparément dans le répertoire de données de Codex sont conservées.",
     "deleteCodexHistoryRetry": "La suppression de l’historique Codex n’a pas abouti. La conversation Aion reste consultable. Sélectionnez la suppression de l’historique Codex pour réessayer.",

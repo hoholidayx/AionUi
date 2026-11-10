@@ -25,7 +25,6 @@
     "deleteTitle": "Excluir",
     "deleteConfirm": "Tem certeza de que deseja excluir este chat?",
     "confirmDelete": "Excluir",
-    "deleteNamedConversation": "Excluir “{{name}}” permanentemente do Aion?",
     "deleteCodexHistory": "Também excluir permanentemente o histórico do Codex",
     "deleteCodexHistoryWarning": "Isso exclui permanentemente a sessão do Codex e as sessões dos subagentes que ela criou. As imagens salvas separadamente no diretório de dados do Codex são mantidas.",
     "deleteCodexHistoryRetry": "Não foi possível concluir a exclusão do histórico do Codex. A conversa no Aion continua disponível. Selecione a opção de excluir o histórico do Codex para tentar novamente.",

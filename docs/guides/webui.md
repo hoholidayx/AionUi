@@ -10,6 +10,7 @@ AionUi supports WebUI mode, allowing you to access the application through a web
 - [Linux](#linux)
 - [Android (Termux)](#android-termux)
 - [Remote Access](#remote-access)
+- [Deleting Codex Conversations](#deleting-codex-conversations)
 - [Troubleshooting](#troubleshooting)
 
 ---
@@ -470,6 +471,14 @@ Look for `inet` address (e.g., `192.168.1.100`).
 Access from other devices: `http://YOUR_IP_ADDRESS:3000`
 
 ---
+
+## Deleting Codex Conversations
+
+Open the conversation's menu in history or in the archived list and choose **Delete**. By default, this deletes the Aion conversation and its messages. Aion also removes its automatically created workspace when no other conversation shares it.
+
+When signed in to WebUI as the built-in default account, you can select **Also permanently delete Codex history** for a new conversation that has its own verified thread created by the built-in Codex agent. The checkbox starts unchecked. The Codex installation must support permanent thread deletion through app-server.
+
+Aion removes the Codex history first. If that step fails, the Aion conversation remains available for reading. Select the option again to retry. If Codex already deleted the verified thread, Aion can complete its own cleanup. Image files stored separately in the Codex data directory are kept.
 
 ## Troubleshooting
 

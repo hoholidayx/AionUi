@@ -25,7 +25,6 @@
     "deleteTitle": "حذف",
     "deleteConfirm": "آیا مطمئن هستید که می‌خواهید این چت را حذف کنید؟",
     "confirmDelete": "حذف",
-    "deleteNamedConversation": "«{{name}}» برای همیشه از Aion حذف شود؟",
     "deleteCodexHistory": "تاریخچه Codex هم برای همیشه حذف شود",
     "deleteCodexHistoryWarning": "این کار رشته Codex و رشته‌های عامل‌های فرعی ایجادشده توسط آن را برای همیشه حذف می‌کند. فایل‌های تصویری که جداگانه در پوشه داده‌های Codex ذخیره شده‌اند باقی می‌مانند.",
     "deleteCodexHistoryRetry": "حذف تاریخچه Codex کامل نشد. گفت‌وگوی Aion هنوز قابل مشاهده است. برای تلاش دوباره، گزینه حذف تاریخچه Codex را انتخاب کنید.",
