@@ -309,6 +309,13 @@ export const conversation = {
     (list) => list.map(fromApiConversation)
   ),
   remove: httpDelete<boolean, { id: string }>((p) => `/api/conversations/${p.id}`),
+  deleteOptions: httpGet<'unavailable' | 'available' | 'retry_required', { id: string }>(
+    ({ id }) => `/api/conversations/${encodeURIComponent(id)}/delete-options`,
+    { silentStatuses: [404, 405] }
+  ),
+  removeWithCodexHistory: httpDelete<void, { id: string }>(
+    ({ id }) => `/api/conversations/${encodeURIComponent(id)}/with-codex-history`
+  ),
   // `name_source` qualifies a `name` change: 'user' = explicit rename (backend
   // locks the name against agent-generated titles; also the default when absent),
   // 'auto' = frontend-derived default title (stays agent-overwritable).

@@ -20,6 +20,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 
 import WorkspaceCollapse from '../components/WorkspaceCollapse';
 import ConversationRow from './ConversationRow';
+import DeleteConversationDialog from './DeleteConversationDialog';
 import SortableConversationRow from './SortableConversationRow';
 import { useBatchSelection } from './hooks/useBatchSelection';
 import { useConversationActions } from './hooks/useConversationActions';
@@ -38,6 +39,7 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
   const { id } = useParams();
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const [deleteTarget, setDeleteTarget] = React.useState<TChatConversation | null>(null);
   const layout = useLayoutContext();
   const isMobile = layout?.isMobile ?? false;
   const { getJobStatus, markAsRead, setActiveConversation } = useCronJobsMap();
@@ -111,6 +113,7 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
     renameLoading,
     dropdownVisibleId,
     handleConversationClick,
+    handleConversationDeleted,
     handleArchive,
     handleBatchArchive,
     handleEditStart,
@@ -180,6 +183,7 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
       onEditStart: handleEditStart,
       onCreateCronTask: handleCreateCronTask,
       onArchive: handleArchive,
+      onDelete: conversation.type === 'acp' && conversation.extra?.backend === 'codex' ? setDeleteTarget : undefined,
       onTogglePin: handleTogglePin,
       onToggleManualUnread: handleToggleManualUnread,
       getJobStatus,
@@ -285,6 +289,19 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
           allowClear
         />
       </Modal>
+
+      {deleteTarget && (
+        <DeleteConversationDialog
+          key={deleteTarget.id}
+          id={deleteTarget.id}
+          name={deleteTarget.name}
+          onClose={() => setDeleteTarget(null)}
+          onDeleted={() => {
+            handleConversationDeleted(deleteTarget.id);
+            setDeleteTarget(null);
+          }}
+        />
+      )}
 
       {batchMode && !collapsed && (
         <div className='px-12px pb-8px pt-2px sticky top-0 z-20 bg-[var(--bg-2)]'>

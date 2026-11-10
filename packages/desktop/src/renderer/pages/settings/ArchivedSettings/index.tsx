@@ -18,6 +18,7 @@ import useSWR from 'swr';
 import SettingsPageHeader from '../components/SettingsPageHeader';
 import SettingsPageWrapper from '../components/SettingsPageWrapper';
 import { resolveConversationLeadingMark } from '@/renderer/pages/conversation/utils/conversationAssistantIdentity';
+import DeleteConversationDialog from '@/renderer/pages/conversation/GroupedHistory/DeleteConversationDialog';
 
 const ARCHIVED_SWR_KEY = 'sidebar-archived';
 
@@ -79,6 +80,7 @@ const ArchivedSettings: React.FC = () => {
   const { t, i18n } = useTranslation();
   const logos = useAgentLogos();
   const [selectionMode, setSelectionMode] = React.useState(false);
+  const [deleteTarget, setDeleteTarget] = React.useState<ArchivedRow | null>(null);
   const [selectedKeys, setSelectedKeys] = React.useState<ReadonlySet<string>>(() => new Set<string>());
   // Appended "load more" windows, keyed by scope token. Reset on any refetch
   // (restore/delete) so paging restarts from the fresh first screen — the
@@ -325,6 +327,10 @@ const ArchivedSettings: React.FC = () => {
 
   const handleDelete = React.useCallback(
     (row: ArchivedRow) => {
+      if (row.item_type === 'conversation') {
+        setDeleteTarget(row);
+        return;
+      }
       Modal.confirm({
         title: t('settings.archived.deleteConfirmTitle'),
         content: t('settings.archived.deleteConfirmContent', { name: row.name }),
@@ -458,6 +464,20 @@ const ArchivedSettings: React.FC = () => {
 
   return (
     <SettingsPageWrapper>
+      {deleteTarget && (
+        <DeleteConversationDialog
+          key={deleteTarget.item_id}
+          id={deleteTarget.item_id}
+          name={deleteTarget.name}
+          onClose={() => setDeleteTarget(null)}
+          deleteLocal={(id) => ipcBridge.sidebar.deleteArchivedItem.invoke({ item_type: 'conversation', item_id: id })}
+          onDeleted={() => {
+            setDeleteTarget(null);
+            void refresh().catch((error) => console.error('Failed to refresh archived items:', error));
+            Message.success(t('settings.archived.deleteSuccess'));
+          }}
+        />
+      )}
       <SettingsPageHeader
         title={t('settings.archived.navLabel')}
         actions={

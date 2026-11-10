@@ -79,18 +79,12 @@ export const useConversationActions = ({
     [batchMode, toggleSelectedConversation, markAsRead, navigate, onSessionClick]
   );
 
-  const removeConversation = useCallback(
-    async (conversation_id: string) => {
-      const success = await ipcBridge.conversation.remove.invoke({ id: conversation_id });
-      if (!success) {
-        return false;
-      }
-
+  const handleConversationDeleted = useCallback(
+    (conversation_id: string) => {
       emitter.emit('conversation.deleted', conversation_id);
       if (id === conversation_id) {
         void navigate('/');
       }
-      return true;
     },
     [id, navigate]
   );
@@ -323,6 +317,7 @@ export const useConversationActions = ({
     renameLoading,
     dropdownVisibleId,
     handleConversationClick,
+    handleConversationDeleted,
     handleBatchArchive,
     handleArchive,
     handleEditStart,
