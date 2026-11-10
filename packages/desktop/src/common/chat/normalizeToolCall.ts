@@ -203,7 +203,7 @@ function normalizeToolCallStatus(status?: string): NormalizedToolStatus {
 
 export function normalizeToolCall(message: IMessageToolCall): NormalizedToolCall | undefined {
   const { call_id, name, status, input, output, args, description, image } = message.content;
-  if (!call_id) return undefined;
+  if (typeof call_id !== 'string' || !call_id) return undefined;
 
   const displayInput = input
     ? formatValue(input)
@@ -211,12 +211,19 @@ export function normalizeToolCall(message: IMessageToolCall): NormalizedToolCall
       ? formatValue(args)
       : undefined;
 
+  const imagePath = image?.path;
+  const conversationId = message.conversation_id;
   const imageSource: ToolImageSource | undefined =
-    status === 'completed' && isCodexImageToolCall(message.content) && image?.path && message.conversation_id
+    status === 'completed' &&
+    typeof imagePath === 'string' &&
+    imagePath &&
+    typeof conversationId === 'string' &&
+    conversationId &&
+    isCodexImageToolCall(message.content)
       ? {
           kind: 'tool-message',
-          ref: { conversationId: message.conversation_id, messageId: call_id },
-          fileName: getAcpImageFileName(image.path),
+          ref: { conversationId, messageId: call_id },
+          fileName: getAcpImageFileName(imagePath),
         }
       : undefined;
 

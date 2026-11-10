@@ -11,6 +11,7 @@ import type { IMessageAcpToolCall, IMessageToolCall } from './chatLib';
 
 const INLINE_IMAGE_RESULT_LIMIT = 64 * 1024;
 const IMAGE_PATH_EXTENSION_RE = /\.(?:png|jpe?g|webp|gif)$/i;
+const ASYNC_IMAGE_CALL_PREFIX = 'async-image:';
 
 const isProbablyInlineImageResult = (value: string): boolean =>
   value.length > INLINE_IMAGE_RESULT_LIMIT &&
@@ -69,8 +70,7 @@ export const sanitizeAcpToolCallContent = (content: ToolCallUpdate): ToolCallUpd
   update: sanitizeAcpToolUpdate(content.update),
 });
 
-export const getAcpImagePath = (update: ToolCallUpdate['update']): string | undefined => {
-  const rawOutput = update.rawOutput || update.raw_output;
+const getRawImagePath = (rawOutput?: AcpRawOutput): string | undefined => {
   const imagePath = rawOutput?.image?.path;
   if (typeof imagePath === 'string' && imagePath) return imagePath;
 
@@ -86,11 +86,16 @@ export const getAcpImagePath = (update: ToolCallUpdate['update']): string | unde
   return undefined;
 };
 
+export const getAcpImagePath = (update: ToolCallUpdate['update']): string | undefined =>
+  getRawImagePath(update.rawOutput) ?? getRawImagePath(update.raw_output);
+
 export const getAcpImageFileName = (path?: string, fallback = 'generated-image.png'): string =>
   path?.split(/[/\\]/).pop() || fallback;
 
+const isAsyncImageCallId = (id: unknown): boolean => typeof id === 'string' && id.startsWith(ASYNC_IMAGE_CALL_PREFIX);
+
 export const getAcpAsyncImage = (update?: ToolCallUpdate['update']): AsyncImageOutput | undefined => {
-  if (typeof update?.tool_call_id !== 'string' || !update.tool_call_id.startsWith('async-image:')) return undefined;
+  if (!update || !isAsyncImageCallId(update.tool_call_id)) return undefined;
 
   const output = update.raw_output?.async_image ?? update.rawOutput?.async_image;
   return output && typeof output === 'object' && !Array.isArray(output) ? output : undefined;
@@ -100,9 +105,8 @@ export function getAcpToolImageSource(
   update: ToolCallUpdate['update'],
   conversationId?: string
 ): ToolImageSource | undefined {
-  const asyncOutput = getAcpAsyncImage(update);
-  if (asyncOutput) {
-    const attachmentId = asyncOutput.attachment_id;
+  if (isAsyncImageCallId(update.tool_call_id)) {
+    const attachmentId = getAcpAsyncImage(update)?.attachment_id;
     if (update.status === 'completed' && conversationId && typeof attachmentId === 'string' && attachmentId) {
       return { kind: 'async-attachment', ref: { conversationId, attachmentId } };
     }
@@ -134,7 +138,7 @@ export const getAsyncImageAdmissionFailure = (message: IMessageToolCall): IMessa
       session_id: message.conversation_id ?? '',
       update: {
         sessionUpdate: 'tool_call',
-        tool_call_id: `async-image:admission-${message.id}`,
+        tool_call_id: `${ASYNC_IMAGE_CALL_PREFIX}admission-${message.id}`,
         status: 'failed',
         title: '',
         kind: 'execute',

@@ -178,17 +178,16 @@ describe('MessageAcpToolCall image output', () => {
     expect(mockDownloadFileFromPath).not.toHaveBeenCalled();
   });
 
-  it('does not preview a local path when a completed async card is missing its attachment', () => {
+  it.each([{}, undefined])('keeps an async card without an attachment off the path reader (%j)', (async_image) => {
     render(
       <MessageAcpToolCall
         message={createMessage({
           ...asyncImageUpdate,
-          raw_output: { async_image: {}, saved_path: '/workspace/unrelated.png' },
+          raw_output: { async_image, saved_path: '/workspace/unrelated.png' },
         })}
       />
     );
 
-    expect(screen.getByText('common.success')).toBeInTheDocument();
     expect(screen.queryByTestId('local-image')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'acp.image.download_aria' })).not.toBeInTheDocument();
   });

@@ -239,6 +239,16 @@ describe('ACP tool call image output', () => {
     expect(getAcpImagePath(createAcpToolCall(undefined).content.update)).toBeUndefined();
   });
 
+  it('finds a saved image in snake_case output when camelCase output has no image', () => {
+    expect(
+      getAcpImagePath({
+        ...createAcpToolCall(undefined).content.update,
+        rawOutput: { saved_path: '/not-an-image.txt' },
+        raw_output: { image: { path: '/persisted.png' } },
+      })
+    ).toBe('/persisted.png');
+  });
+
   it('does not resolve non-image saved_path as an image preview path', () => {
     expect(
       getAcpImagePath({

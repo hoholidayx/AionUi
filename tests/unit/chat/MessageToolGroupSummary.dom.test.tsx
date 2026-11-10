@@ -105,6 +105,16 @@ describe('standalone Codex image output', () => {
     expect(screen.queryByLabelText('acp.image.download_aria')).not.toBeInTheDocument();
   });
 
+  it('keeps the tool card usable when a historical Codex path is malformed', () => {
+    render(
+      <MessageToolCall
+        message={{ ...message, content: { ...message.content, image: { ...image, path: {} as unknown as string } } }}
+      />
+    );
+    expect(screen.getByText('imageGeneration')).toBeInTheDocument();
+    expect(screen.queryByTestId('local-image')).not.toBeInTheDocument();
+  });
+
   it('reports a rejected Codex download without retrying by path', async () => {
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
     mockDownloadToolImage.mockRejectedValueOnce(new Error('denied'));

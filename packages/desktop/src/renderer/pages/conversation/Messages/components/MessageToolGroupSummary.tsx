@@ -30,10 +30,11 @@ const ToolItemDetail: React.FC<{ item: NormalizedToolCall }> = ({ item }) => {
   const [fullItem, setFullItem] = useState<NormalizedToolCall | null>(null);
   const [loadingFull, setLoadingFull] = useState(false);
   const [loadError, setLoadError] = useState(false);
-  const displayItem = item.truncated && fullItem ? fullItem : item;
-  const hasDetail = displayItem.input || displayItem.output || item.truncated || displayItem.image;
+  const displayItem = item.truncated && fullItem?.status === item.status ? fullItem : item;
+  const image = item.image ?? displayItem.image;
+  const hasDetail = displayItem.input || displayItem.output || item.truncated || image;
   const loadFullItem = async () => {
-    if (!item.truncated || fullItem || loadingFull || !item.conversationId || !item.messageId) return;
+    if (!item.truncated || displayItem !== item || loadingFull || !item.conversationId || !item.messageId) return;
     setLoadingFull(true);
     setLoadError(false);
     try {
@@ -97,7 +98,7 @@ const ToolItemDetail: React.FC<{ item: NormalizedToolCall }> = ({ item }) => {
           )}
         </div>
       )}
-      {displayItem.image && <ToolImagePreview source={displayItem.image} />}
+      {image && <ToolImagePreview source={image} />}
     </div>
   );
 };

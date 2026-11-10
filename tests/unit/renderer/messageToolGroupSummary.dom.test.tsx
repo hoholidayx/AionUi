@@ -2,8 +2,7 @@ import React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { ipcBridge } from '@/common';
-import type { TMessage } from '@/common/chat/chatLib';
-import type { ToolMessage } from '@/common/chat/normalizeToolCall';
+import type { IMessageAcpToolCall, TMessage } from '@/common/chat/chatLib';
 import MessageToolGroupSummary from '@/renderer/pages/conversation/Messages/components/MessageToolGroupSummary';
 
 vi.mock('@/common', () => ({
@@ -20,7 +19,7 @@ vi.mock('@/common', () => ({
 }));
 
 describe('MessageToolGroupSummary', () => {
-  it('shows the full output and its image when expanding a compact history item', async () => {
+  it('fills in a missing image from full history and uses a newer image when it arrives', async () => {
     const invoke = vi.mocked(ipcBridge.database.getConversationMessage.invoke);
     invoke.mockResolvedValue({
       id: 'message-1',
@@ -40,33 +39,24 @@ describe('MessageToolGroupSummary', () => {
       },
     } as unknown as TMessage);
 
-    render(
-      <MessageToolGroupSummary
-        messages={[
-          {
-            id: 'message-1',
-            conversation_id: 'conversation-1',
-            type: 'acp_tool_call',
-            content: {
-              _compact: {
-                truncated: true,
-                original_size: 90000,
-                preview_chars: 4096,
-              },
-              update: {
-                session_update: 'tool_call',
-                tool_call_id: 'tool-1',
-                status: 'completed',
-                title: 'rg',
-                kind: 'search',
-                raw_input: { pattern: 'needle', path: '.' },
-                content: [{ type: 'content', content: { type: 'text', text: 'preview' } }],
-              },
-            },
-          } as unknown as ToolMessage,
-        ]}
-      />
-    );
+    const compactMessage = {
+      id: 'message-1',
+      conversation_id: 'conversation-1',
+      type: 'acp_tool_call',
+      content: {
+        _compact: { truncated: true, original_size: 90000, preview_chars: 4096 },
+        update: {
+          session_update: 'tool_call',
+          tool_call_id: 'tool-1',
+          status: 'completed',
+          title: 'rg',
+          kind: 'search',
+          raw_input: { pattern: 'needle', path: '.' },
+          content: [{ type: 'content', content: { type: 'text', text: 'preview' } }],
+        },
+      },
+    } as unknown as IMessageAcpToolCall;
+    const { rerender } = render(<MessageToolGroupSummary messages={[compactMessage]} />);
 
     fireEvent.click(screen.getByText('View Steps · 1'));
     fireEvent.click(screen.getByText('rg'));
@@ -82,5 +72,20 @@ describe('MessageToolGroupSummary', () => {
       'src',
       'data:image/png;base64,aW1hZ2U='
     );
+
+    rerender(
+      <MessageToolGroupSummary
+        messages={[
+          {
+            ...compactMessage,
+            content: {
+              ...compactMessage.content,
+              update: { ...compactMessage.content.update, raw_output: { saved_path: '/workspace/live-result.png' } },
+            },
+          },
+        ]}
+      />
+    );
+    expect(await screen.findByRole('img', { name: 'live-result.png' })).toBeInTheDocument();
   });
 });
