@@ -7,7 +7,7 @@ import { ipcBridge } from '@/common';
 import type { NormalizedToolCall, NormalizedToolStatus, ToolMessage } from '@/common/chat/normalizeToolCall';
 import { normalizeToolMessages, hasRunningToolMessages } from '@/common/chat/normalizeToolCall';
 import ToolImagePreview from './ToolImagePreview';
-import './MessageToolGroupSummary.css';
+import styles from './ToolCards.module.css';
 
 const statusToBadge = (status: NormalizedToolStatus): BadgeProps['status'] => {
   switch (status) {
@@ -60,7 +60,10 @@ const ToolItemDetail: React.FC<{ item: NormalizedToolCall }> = ({ item }) => {
   return (
     <div className='flex flex-col'>
       <div className='flex flex-row color-#86909C gap-12px items-center'>
-        <Badge status={statusToBadge(item.status)} className={item.status === 'running' ? 'badge-breathing' : ''} />
+        <Badge
+          status={statusToBadge(item.status)}
+          className={item.status === 'running' ? styles.badgeBreathing : undefined}
+        />
         <span
           className={
             'flex-1 min-w-0' +
@@ -81,19 +84,19 @@ const ToolItemDetail: React.FC<{ item: NormalizedToolCall }> = ({ item }) => {
         )}
       </div>
       {expanded && hasDetail && (
-        <div className='tool-detail-panel m-l-20px m-t-4px'>
-          {loadingFull && <div className='tool-detail-label'>Loading...</div>}
-          {loadError && <div className='tool-detail-label'>Failed to load full output</div>}
+        <div className={`${styles.detailPanel} m-l-20px m-t-4px`}>
+          {loadingFull && <div className={styles.detailLabel}>Loading...</div>}
+          {loadError && <div className={styles.detailLabel}>Failed to load full output</div>}
           {displayItem.input && (
-            <div className='tool-detail-section'>
-              <div className='tool-detail-label'>Input</div>
-              <pre className='tool-detail-content'>{displayItem.input}</pre>
+            <div className={styles.detailSection}>
+              <div className={styles.detailLabel}>Input</div>
+              <pre className={styles.detailContent}>{displayItem.input}</pre>
             </div>
           )}
           {displayItem.output && (
-            <div className='tool-detail-section'>
-              <div className='tool-detail-label'>Output</div>
-              <pre className='tool-detail-content'>{displayItem.output}</pre>
+            <div className={styles.detailSection}>
+              <div className={styles.detailLabel}>Output</div>
+              <pre className={styles.detailContent}>{displayItem.output}</pre>
             </div>
           )}
         </div>
@@ -114,18 +117,18 @@ const MessageToolGroupSummary: React.FC<{ messages: ToolMessage[] }> = ({ messag
   const tools = useMemo(() => normalizeToolMessages(messages), [messages]);
 
   return (
-    <div className='tool-group-summary'>
-      <div className='tool-group-summary__header' onClick={() => setShowMore(!showMore)}>
-        <span className='tool-group-summary__icon'>
+    <div className={styles.summary}>
+      <div className={styles.summaryHeader} onClick={() => setShowMore(!showMore)}>
+        <span className={styles.summaryIcon}>
           {hasRunning ? <Spin size={12} /> : <Checklist theme='outline' size='14' />}
         </span>
-        <span className='tool-group-summary__label'>View Steps {tools.length > 0 ? `· ${tools.length}` : ''}</span>
-        <span className={`tool-group-summary__arrow${showMore ? ' tool-group-summary__arrow--open' : ''}`}>
+        <span className={styles.summaryLabel}>View Steps {tools.length > 0 ? `· ${tools.length}` : ''}</span>
+        <span className={`${styles.summaryArrow}${showMore ? ` ${styles.summaryArrowOpen}` : ''}`}>
           <Right theme='outline' size='12' />
         </span>
       </div>
       {showMore && (
-        <div className='tool-group-summary__body'>
+        <div className={styles.summaryBody}>
           {tools.map((item) => (
             <ToolItemDetail key={JSON.stringify([item.conversationId, item.messageId, item.key])} item={item} />
           ))}

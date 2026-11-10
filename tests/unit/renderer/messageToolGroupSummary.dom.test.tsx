@@ -3,7 +3,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { ipcBridge } from '@/common';
 import type { IMessageAcpToolCall, TMessage } from '@/common/chat/chatLib';
-import MessageToolGroupSummary from '@/renderer/pages/conversation/Messages/components/MessageToolGroupSummary';
+import MessageToolGroupSummary from '@/renderer/pages/conversation/Messages/ToolCards/MessageToolGroupSummary';
 
 vi.mock('@/common', () => ({
   ipcBridge: {

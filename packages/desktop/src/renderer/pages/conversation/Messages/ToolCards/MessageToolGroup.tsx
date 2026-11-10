@@ -9,21 +9,20 @@ import type { IMessageToolGroup } from '@/common/chat/chatLib';
 import { iconColors } from '@/renderer/styles/colors';
 import { Alert, Button, Image, Message, Radio, Tag, Tooltip } from '@arco-design/web-react';
 import { Copy, Download, LoadingOne } from '@icon-park/react';
-import React, { useCallback, useContext, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import ButlerDiagnoseButton from '@/renderer/components/base/ButlerDiagnoseButton';
 import FeedbackButton from '@/renderer/components/base/FeedbackButton';
 import FileChangesPanel from '@/renderer/components/base/FileChangesPanel';
 import { useDiffPreviewHandlers } from '@/renderer/hooks/file/useDiffPreviewHandlers';
 import { parseDiff } from '@/renderer/utils/file/diffUtils';
-import MessageFileChanges from '../MessageFileChanges';
+import MessageFileChanges from './MessageFileChanges';
 import CollapsibleContent from '@renderer/components/chat/CollapsibleContent';
 import LocalImageView from '@renderer/components/media/LocalImageView';
 import MarkdownView from '@renderer/components/Markdown';
 import { ToolConfirmationOutcome } from '@renderer/utils/common';
-import { ImagePreviewContext } from '../MessageList';
-import { COLLAPSE_CONFIG, TEXT_CONFIG } from '../constants';
-import type { ImageGenerationResult, WriteFileResult } from '../types';
+import { COLLAPSE_CONFIG, TEXT_CONFIG } from './constants';
+import type { ImageGenerationResult, WriteFileResult } from './types';
 
 const CODE_STYLE = { marginTop: 4, marginBottom: 4 };
 
@@ -37,6 +36,7 @@ const RESULT_MAX_HEIGHT = COLLAPSE_CONFIG.MAX_HEIGHT;
 
 interface IMessageToolGroupProps {
   message: IMessageToolGroup;
+  inPreviewGroup?: boolean;
 }
 
 const useConfirmationButtons = (
@@ -227,13 +227,13 @@ const ConfirmationDetails: React.FC<{
 const ImageDisplay: React.FC<{
   imgUrl: string;
   relativePath?: string;
-}> = ({ imgUrl, relativePath }) => {
+  inPreviewGroup: boolean;
+}> = ({ imgUrl, relativePath, inPreviewGroup }) => {
   const { t } = useTranslation();
   const [messageApi, messageContext] = Message.useMessage();
   const [imageUrl, setImageUrl] = useState<string>(imgUrl);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
-  const { inPreviewGroup } = useContext(ImagePreviewContext);
 
   // 如果是本地路径，需要加载为 base64 Load local paths as base64
   React.useEffect(() => {
@@ -453,7 +453,7 @@ const ToolResultDisplay: React.FC<{
   );
 };
 
-const MessageToolGroup: React.FC<IMessageToolGroupProps> = ({ message }) => {
+const MessageToolGroup: React.FC<IMessageToolGroupProps> = ({ message, inPreviewGroup = false }) => {
   const { t } = useTranslation();
 
   // 收集所有 WriteFile 结果用于汇总显示 / Collect all WriteFile results for summary display
@@ -530,7 +530,14 @@ const MessageToolGroup: React.FC<IMessageToolGroupProps> = ({ message }) => {
         if (name === 'ImageGeneration' && typeof result_display === 'object') {
           const result = result_display as ImageGenerationResult;
           if (result.img_url) {
-            return <ImageDisplay key={call_id} imgUrl={result.img_url} relativePath={result.relative_path} />;
+            return (
+              <ImageDisplay
+                key={call_id}
+                imgUrl={result.img_url}
+                relativePath={result.relative_path}
+                inPreviewGroup={inPreviewGroup}
+              />
+            );
           }
         }
 

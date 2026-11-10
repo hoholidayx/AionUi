@@ -62,11 +62,11 @@ vi.mock('@/renderer/pages/conversation/Messages/components/MessageTips', () => (
   default: () => <div>tips</div>,
 }));
 
-vi.mock('@/renderer/pages/conversation/Messages/components/MessageToolCall', () => ({
+vi.mock('@/renderer/pages/conversation/Messages/ToolCards/MessageToolCall', () => ({
   default: () => <div>tool_call</div>,
 }));
 
-vi.mock('@/renderer/pages/conversation/Messages/components/MessageToolGroup', () => ({
+vi.mock('@/renderer/pages/conversation/Messages/ToolCards/MessageToolGroup', () => ({
   default: () => <div>tool_group</div>,
 }));
 
@@ -82,7 +82,7 @@ vi.mock('@/renderer/pages/conversation/Messages/acp/MessageAcpPermission', () =>
   default: () => <div>acp_permission</div>,
 }));
 
-vi.mock('@/renderer/pages/conversation/Messages/acp/MessageAcpToolCall', () => ({
+vi.mock('@/renderer/pages/conversation/Messages/ToolCards/MessageAcpToolCall', () => ({
   default: () => <div>acp_tool_call</div>,
 }));
 
@@ -102,14 +102,13 @@ vi.mock('@/renderer/pages/conversation/Messages/components/MessageSkillSuggest',
   default: () => <div>skill_suggest</div>,
 }));
 
-vi.mock('@/renderer/pages/conversation/Messages/components/MessageToolGroupSummary', () => ({
+vi.mock('@/renderer/pages/conversation/Messages/ToolCards/MessageToolGroupSummary', () => ({
   default: () => <div>tool_summary</div>,
 }));
 
-vi.mock('@/renderer/pages/conversation/Messages/MessageFileChanges', () => ({
+vi.mock('@/renderer/pages/conversation/Messages/ToolCards/MessageFileChanges', () => ({
   __esModule: true,
   default: () => <div>file_changes</div>,
-  parseDiff: vi.fn(),
 }));
 
 vi.mock('@/renderer/pages/conversation/Messages/components/SelectionReplyButton', () => ({

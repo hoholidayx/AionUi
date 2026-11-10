@@ -14,7 +14,7 @@ import { createTwoFilesPatch } from 'diff';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import MarkdownView from '@renderer/components/Markdown';
-import ToolImagePreview from '../components/ToolImagePreview';
+import ToolImagePreview from './ToolImagePreview';
 
 const ASYNC_IMAGE_FAILURE_KEYS = {
   attachment_not_found: 'invalidReference',

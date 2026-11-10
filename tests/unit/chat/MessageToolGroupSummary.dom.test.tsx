@@ -9,8 +9,8 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { IMessageAcpToolCall, IMessageToolCall } from '@/common/chat/chatLib';
 import type { ToolImageSource } from '@/common/types/chatFile';
-import MessageToolCall from '@/renderer/pages/conversation/Messages/components/MessageToolCall';
-import MessageToolGroupSummary from '@/renderer/pages/conversation/Messages/components/MessageToolGroupSummary';
+import MessageToolCall from '@/renderer/pages/conversation/Messages/ToolCards/MessageToolCall';
+import MessageToolGroupSummary from '@/renderer/pages/conversation/Messages/ToolCards/MessageToolGroupSummary';
 
 const mockDownloadFileFromPath = vi.fn().mockResolvedValue(undefined);
 const mockDownloadToolImage = vi.fn().mockResolvedValue(undefined);
@@ -68,6 +68,7 @@ describe('standalone Codex image output', () => {
 
   it('renders the preview and downloads the file without expanding tool details', () => {
     render(<MessageToolCall message={message} />);
+    expect(screen.getByText('settings.imageGeneration')).toBeInTheDocument();
     expect(screen.getByTestId('local-image')).toHaveAttribute('data-tool-message', 'image-call');
     fireEvent.click(screen.getByLabelText('acp.image.download_aria'));
     expect(mockDownloadToolImage).toHaveBeenCalledWith(
@@ -75,6 +76,25 @@ describe('standalone Codex image output', () => {
       'generated.png'
     );
     expect(mockDownloadFileFromPath).not.toHaveBeenCalled();
+  });
+
+  it('localizes the title of a running Codex image call before an image is available', () => {
+    render(
+      <MessageToolCall message={{ ...message, content: { ...message.content, status: 'running', image: undefined } }} />
+    );
+    expect(screen.getByText('settings.imageGeneration')).toBeInTheDocument();
+    expect(screen.queryByTestId('local-image')).not.toBeInTheDocument();
+  });
+
+  it('localizes the fallback title when the Codex image call ID is missing', () => {
+    render(<MessageToolCall message={{ ...message, content: { ...message.content, call_id: '' } }} />);
+    expect(screen.getByText('settings.imageGeneration')).toBeInTheDocument();
+  });
+
+  it('uses the original name for ordinary tools', () => {
+    render(<MessageToolCall message={{ ...message, content: { ...message.content, name: 'Read', args: {} } }} />);
+    expect(screen.getByText('Read')).toBeInTheDocument();
+    expect(screen.queryByText('settings.imageGeneration')).not.toBeInTheDocument();
   });
 
   it.each(['error', 'canceled'] as const)('hides the preview for a %s call', (status) => {
@@ -111,7 +131,7 @@ describe('standalone Codex image output', () => {
         message={{ ...message, content: { ...message.content, image: { ...image, path: {} as unknown as string } } }}
       />
     );
-    expect(screen.getByText('imageGeneration')).toBeInTheDocument();
+    expect(screen.getByText('settings.imageGeneration')).toBeInTheDocument();
     expect(screen.queryByTestId('local-image')).not.toBeInTheDocument();
   });
 

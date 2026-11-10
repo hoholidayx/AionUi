@@ -14,7 +14,7 @@ import type {
   IMessageToolGroup,
   TMessage,
 } from '@/common/chat/chatLib';
-import type { MessageFileChangesProps } from '@/renderer/pages/conversation/Messages/MessageFileChanges';
+import type { MessageFileChangesProps } from '@/renderer/pages/conversation/Messages/ToolCards/MessageFileChanges';
 import {
   MessageListLoadingProvider,
   MessageListProvider,
@@ -91,11 +91,11 @@ vi.mock('@/renderer/pages/conversation/Messages/components/MessageTips', () => (
   default: () => <div>tips</div>,
 }));
 
-vi.mock('@/renderer/pages/conversation/Messages/components/MessageToolCall', () => ({
+vi.mock('@/renderer/pages/conversation/Messages/ToolCards/MessageToolCall', () => ({
   default: ({ message }: { message: IMessageToolCall }) => <div>{message.content.image?.path ?? 'tool_call'}</div>,
 }));
 
-vi.mock('@/renderer/pages/conversation/Messages/components/MessageToolGroup', () => ({
+vi.mock('@/renderer/pages/conversation/Messages/ToolCards/MessageToolGroup', () => ({
   default: ({ message }: { message: IMessageToolGroup }) => (
     <div data-testid='tool-group' data-message-id={message.id}>
       tool_group
@@ -115,7 +115,7 @@ vi.mock('@/renderer/pages/conversation/Messages/acp/MessageAcpPermission', () =>
   default: () => <div>acp_permission</div>,
 }));
 
-vi.mock('@/renderer/pages/conversation/Messages/acp/MessageAcpToolCall', () => ({
+vi.mock('@/renderer/pages/conversation/Messages/ToolCards/MessageAcpToolCall', () => ({
   default: ({ message }: { message: IMessageAcpToolCall }) => (
     <div
       data-testid='acp-tool-call'
@@ -144,19 +144,23 @@ vi.mock('@/renderer/pages/conversation/Messages/components/MessageSkillSuggest',
   default: () => <div>skill_suggest</div>,
 }));
 
-vi.mock('@/renderer/pages/conversation/Messages/components/MessageToolGroupSummary', () => ({
+vi.mock('@/renderer/pages/conversation/Messages/ToolCards/MessageToolGroupSummary', () => ({
   default: ({ messages }: { messages: Array<IMessageToolGroup | IMessageAcpToolCall> }) => (
     <div data-testid='tool-summary'>{messages.map((message) => message.id).join(',')}</div>
   ),
 }));
 
-vi.mock('@/renderer/pages/conversation/Messages/MessageFileChanges', () => ({
+vi.mock('@/renderer/pages/conversation/Messages/ToolCards/MessageFileChanges', () => ({
   __esModule: true,
   default: ({ diffsChanges }: MessageFileChangesProps) => (
     <div data-testid='file-changes' data-file-count={diffsChanges?.length ?? 0}>
       file_changes
     </div>
   ),
+}));
+
+vi.mock('@/renderer/utils/file/diffUtils', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/renderer/utils/file/diffUtils')>()),
   parseDiff: parseDiffMock,
 }));
 

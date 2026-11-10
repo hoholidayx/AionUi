@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import type { IMessageToolCall } from '@/common/chat/chatLib';
+import { isCodexImageToolCall, type IMessageToolCall } from '@/common/chat/chatLib';
 import { normalizeToolCall } from '@/common/chat/normalizeToolCall';
 import type { NormalizedToolStatus } from '@/common/chat/normalizeToolCall';
 import FileChangesPanel from '@/renderer/components/base/FileChangesPanel';
@@ -14,9 +14,10 @@ import { Badge } from '@arco-design/web-react';
 import { IconDown, IconRight } from '@arco-design/web-react/icon';
 import { createTwoFilesPatch } from 'diff';
 import React, { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { BadgeProps } from '@arco-design/web-react';
 import ToolImagePreview from './ToolImagePreview';
-import './MessageToolGroupSummary.css';
+import styles from './ToolCards.module.css';
 
 const statusToBadge = (status: NormalizedToolStatus): BadgeProps['status'] => {
   switch (status) {
@@ -56,6 +57,7 @@ const ReplacePreview: React.FC<{ message: IMessageToolCall }> = ({ message }) =>
 };
 
 const MessageToolCall: React.FC<{ message: IMessageToolCall }> = ({ message }) => {
+  const { t } = useTranslation();
   const { name } = message.content;
   const [expanded, setExpanded] = useState(false);
 
@@ -63,9 +65,10 @@ const MessageToolCall: React.FC<{ message: IMessageToolCall }> = ({ message }) =
     return <ReplacePreview message={message} />;
   }
 
+  const displayName = isCodexImageToolCall(message.content) ? t('settings.imageGeneration') : name;
   const normalized = normalizeToolCall(message);
   if (!normalized) {
-    return <div className='text-t-primary'>{name}</div>;
+    return <div className='text-t-primary'>{displayName}</div>;
   }
 
   const hasDetail = normalized.input || normalized.output;
@@ -75,7 +78,7 @@ const MessageToolCall: React.FC<{ message: IMessageToolCall }> = ({ message }) =
       <div className='flex flex-row color-#86909C gap-12px items-center'>
         <Badge
           status={statusToBadge(normalized.status)}
-          className={normalized.status === 'running' ? 'badge-breathing' : ''}
+          className={normalized.status === 'running' ? styles.badgeBreathing : undefined}
         />
         <span
           className={
@@ -85,7 +88,7 @@ const MessageToolCall: React.FC<{ message: IMessageToolCall }> = ({ message }) =
           }
           onClick={hasDetail ? () => setExpanded(!expanded) : undefined}
         >
-          <span className='font-medium text-13px'>{normalized.name}</span>
+          <span className='font-medium text-13px'>{displayName}</span>
           {normalized.description && <span className='m-l-4px opacity-80 text-13px'>{normalized.description}</span>}
         </span>
         {hasDetail && (
@@ -98,17 +101,17 @@ const MessageToolCall: React.FC<{ message: IMessageToolCall }> = ({ message }) =
         )}
       </div>
       {expanded && hasDetail && (
-        <div className='tool-detail-panel m-l-20px m-t-4px'>
+        <div className={`${styles.detailPanel} m-l-20px m-t-4px`}>
           {normalized.input && (
-            <div className='tool-detail-section'>
-              <div className='tool-detail-label'>Input</div>
-              <pre className='tool-detail-content'>{normalized.input}</pre>
+            <div className={styles.detailSection}>
+              <div className={styles.detailLabel}>Input</div>
+              <pre className={styles.detailContent}>{normalized.input}</pre>
             </div>
           )}
           {normalized.output && (
-            <div className='tool-detail-section'>
-              <div className='tool-detail-label'>Output</div>
-              <pre className='tool-detail-content'>{normalized.output}</pre>
+            <div className={styles.detailSection}>
+              <div className={styles.detailLabel}>Output</div>
+              <pre className={styles.detailContent}>{normalized.output}</pre>
             </div>
           )}
         </div>

@@ -45,7 +45,7 @@ vi.mock('@/common', () => ({
   },
 }));
 
-import MessageToolGroup from '@/renderer/pages/conversation/Messages/components/MessageToolGroup';
+import MessageToolGroup from '@/renderer/pages/conversation/Messages/ToolCards/MessageToolGroup';
 import type { IMessageToolGroup } from '@/common/chat/chatLib';
 
 const buildToolGroup = (status: IMessageToolGroup['content'][number]['status']): IMessageToolGroup =>

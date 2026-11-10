@@ -12,8 +12,6 @@ import React, { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { WriteFileResult } from './types';
 
-export { parseDiff, type FileChangeInfo } from '@/renderer/utils/file/diffUtils';
-
 export interface MessageFileChangesProps {
   writeFileChanges?: WriteFileResult[];
   className?: string;

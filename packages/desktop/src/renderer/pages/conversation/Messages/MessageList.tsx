@@ -14,22 +14,28 @@ import { getChatSurfaceWidthClass } from '@/renderer/pages/conversation/utils/ch
 import { iconColors } from '@/renderer/styles/colors';
 import { CHAT_MESSAGE_JUMP_EVENT, type ChatMessageJumpDetail } from '@/renderer/utils/chat/chatMinimapEvents';
 import { collectAiCopyRows, type TurnCopyItem } from '@/renderer/utils/chat/turnCopy';
+import { parseDiff, type FileChangeInfo } from '@/renderer/utils/file/diffUtils';
 import { Image } from '@arco-design/web-react';
 import { Down } from '@icon-park/react';
 import MessageAcpPermission from '@renderer/pages/conversation/Messages/acp/MessageAcpPermission';
 import MessageQuestion from './MessageQuestion';
 import MessagePermission from './components/MessagePermission';
 import MessageAcpTerminalOutput from '@renderer/pages/conversation/Messages/acp/MessageAcpTerminalOutput';
-import MessageAcpToolCall from '@renderer/pages/conversation/Messages/acp/MessageAcpToolCall';
 import classNames from 'classnames';
-import React, { createContext, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
 import { uuid } from '@renderer/utils/common';
 import './messages.css';
 import HOC from '@renderer/utils/ui/HOC';
-import type { FileChangeInfo } from './MessageFileChanges';
-import MessageFileChanges, { parseDiff } from './MessageFileChanges';
+import {
+  MessageAcpToolCall,
+  MessageFileChanges,
+  MessageToolCall,
+  MessageToolGroup,
+  MessageToolGroupSummary,
+  type WriteFileResult,
+} from './ToolCards';
 import { useConversationArtifacts } from './artifacts';
 import { MessageAnchorRail } from './anchorRail';
 import {
@@ -41,14 +47,10 @@ import {
 } from './hooks';
 import MessageAgentStatus from './components/MessageAgentStatus';
 import MessageTips from './components/MessageTips';
-import MessageToolCall from './components/MessageToolCall';
-import MessageToolGroup from './components/MessageToolGroup';
-import MessageToolGroupSummary from './components/MessageToolGroupSummary';
 import MessageCronTrigger from './components/MessageCronTrigger';
 import MessageSkillSuggest from './components/MessageSkillSuggest';
 import MessageText from './components/MessageText';
 import MessageThinking from './components/MessageThinking';
-import type { WriteFileResult } from './types';
 import { useAutoScroll } from './useAutoScroll';
 import SelectionReplyButton from './components/SelectionReplyButton';
 
@@ -151,9 +153,6 @@ const highlightStyle: React.CSSProperties = {
 };
 
 const getUnhandledMessageType = (_message: never): string => 'unknown';
-
-// Image preview context
-export const ImagePreviewContext = createContext<{ inPreviewGroup: boolean }>({ inPreviewGroup: false });
 
 const MessageListSkeleton: React.FC<{ rowWidthClass: string }> = ({ rowWidthClass }) => {
   const rows = [
@@ -289,7 +288,7 @@ const MessageItem: React.FC<{
         case 'tool_call':
           return <MessageToolCall message={message}></MessageToolCall>;
         case 'tool_group':
-          return <MessageToolGroup message={message}></MessageToolGroup>;
+          return <MessageToolGroup message={message} inPreviewGroup />;
         case 'agent_status':
           return <MessageAgentStatus message={message}></MessageAgentStatus>;
         case 'permission':
@@ -745,35 +744,33 @@ const MessageList: React.FC<{ className?: string; emptySlot?: React.ReactNode }>
     <div className='relative flex-1 h-full'>
       {/* Use PreviewGroup to wrap all messages for cross-message image preview */}
       <Image.PreviewGroup actionsLayout={['zoomIn', 'zoomOut', 'originalSize', 'rotateLeft', 'rotateRight']}>
-        <ImagePreviewContext.Provider value={{ inPreviewGroup: true }}>
+        <div
+          ref={setScrollerRef}
+          data-testid='message-list-scroller'
+          // Break out of the parent's 20px horizontal padding so the scrollbar hugs the
+          // window edge, while re-applying that padding inside to keep message content inset.
+          className='flex-1 h-full overflow-y-auto pb-10px box-border -mx-20px px-20px'
+          style={{ overflowAnchor: 'none' }}
+          onPointerDown={handlePointerDown}
+          onScroll={handleMessageListScroll}
+          onWheel={handleWheel}
+        >
           <div
-            ref={setScrollerRef}
-            data-testid='message-list-scroller'
-            // Break out of the parent's 20px horizontal padding so the scrollbar hugs the
-            // window edge, while re-applying that padding inside to keep message content inset.
-            className='flex-1 h-full overflow-y-auto pb-10px box-border -mx-20px px-20px'
-            style={{ overflowAnchor: 'none' }}
-            onPointerDown={handlePointerDown}
-            onScroll={handleMessageListScroll}
-            onWheel={handleWheel}
+            ref={setContentRef}
+            data-testid='message-list-content'
+            style={{
+              overflowAnchor: 'none',
+              fontFamily: 'var(--chat-font-family, inherit)',
+              fontWeight: 'var(--chat-font-weight, inherit)',
+            }}
           >
-            <div
-              ref={setContentRef}
-              data-testid='message-list-content'
-              style={{
-                overflowAnchor: 'none',
-                fontFamily: 'var(--chat-font-family, inherit)',
-                fontWeight: 'var(--chat-font-weight, inherit)',
-              }}
-            >
-              <div className='h-10px' />
-              {processedList.map((item, index) => (
-                <React.Fragment key={getProcessedItemAnchorId(item) || index}>{renderItem(index, item)}</React.Fragment>
-              ))}
-              <div className='h-20px' />
-            </div>
+            <div className='h-10px' />
+            {processedList.map((item, index) => (
+              <React.Fragment key={getProcessedItemAnchorId(item) || index}>{renderItem(index, item)}</React.Fragment>
+            ))}
+            <div className='h-20px' />
           </div>
-        </ImagePreviewContext.Provider>
+        </div>
       </Image.PreviewGroup>
 
       {showScrollButton && (

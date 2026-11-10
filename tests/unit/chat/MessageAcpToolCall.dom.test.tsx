@@ -10,7 +10,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { IMessageAcpToolCall } from '@/common/chat/chatLib';
 import type { ToolImageSource } from '@/common/types/chatFile';
 import type { FileChangesPanelProps } from '@/renderer/components/base/FileChangesPanel';
-import MessageAcpToolCall from '@/renderer/pages/conversation/Messages/acp/MessageAcpToolCall';
+import MessageAcpToolCall from '@/renderer/pages/conversation/Messages/ToolCards/MessageAcpToolCall';
 
 const mockDownloadFileFromPath = vi.fn().mockResolvedValue(undefined);
 const mockDownloadAsyncImage = vi.fn().mockResolvedValue(undefined);

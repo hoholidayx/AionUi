@@ -22,7 +22,7 @@ const read = (relativePath: string) => fs.readFileSync(path.join(repoRoot, relat
 
 describe('FeedbackButton mount points — source-level wiring', () => {
   it('MessageToolGroup wires module=conversation-session', () => {
-    const src = read('packages/desktop/src/renderer/pages/conversation/Messages/components/MessageToolGroup.tsx');
+    const src = read('packages/desktop/src/renderer/pages/conversation/Messages/ToolCards/MessageToolGroup.tsx');
     expect(src).toMatch(/<FeedbackButton\s+module=['"]conversation-session['"]/);
     expect(src).not.toMatch(/<FeedbackButton\s+module=['"](?!conversation-session)[^'"]+['"]/);
   });
@@ -39,7 +39,7 @@ describe('FeedbackButton mount points — source-level wiring', () => {
 
   it('every conversation error surface pairs FeedbackButton with ButlerDiagnoseButton', () => {
     for (const file of [
-      'packages/desktop/src/renderer/pages/conversation/Messages/components/MessageToolGroup.tsx',
+      'packages/desktop/src/renderer/pages/conversation/Messages/ToolCards/MessageToolGroup.tsx',
       'packages/desktop/src/renderer/pages/conversation/Messages/components/MessageTips.tsx',
       'packages/desktop/src/renderer/pages/conversation/Messages/components/MessageAgentStatus.tsx',
     ]) {
