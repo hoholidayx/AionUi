@@ -8,7 +8,7 @@ import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { IMessageAcpToolCall } from '@/common/chat/chatLib';
-import type { AsyncImageRef } from '@/common/types/platform/acpTypes';
+import type { ToolImageSource } from '@/common/types/chatFile';
 import type { FileChangesPanelProps } from '@/renderer/components/base/FileChangesPanel';
 import MessageAcpToolCall from '@/renderer/pages/conversation/Messages/acp/MessageAcpToolCall';
 
@@ -19,24 +19,14 @@ const mockMessageError = vi.fn();
 
 vi.mock('@/renderer/components/media/LocalImageView', () => ({
   __esModule: true,
-  default: ({
-    src,
-    asyncImage,
-    alt,
-    className,
-  }: {
-    src?: string;
-    asyncImage?: AsyncImageRef;
-    alt: string;
-    className?: string;
-  }) => (
+  default: ({ source, alt, className }: { source: ToolImageSource; alt: string; className?: string }) => (
     <img
-      src={src}
+      src={source.kind === 'local-path' ? source.path : undefined}
       alt={alt}
       className={className}
       data-testid='local-image'
-      data-conversation={asyncImage?.conversationId}
-      data-attachment={asyncImage?.attachmentId}
+      data-conversation={source.kind === 'async-attachment' ? source.ref.conversationId : undefined}
+      data-attachment={source.kind === 'async-attachment' ? source.ref.attachmentId : undefined}
     />
   ),
 }));
@@ -188,6 +178,21 @@ describe('MessageAcpToolCall image output', () => {
     expect(mockDownloadFileFromPath).not.toHaveBeenCalled();
   });
 
+  it('does not preview a local path when a completed async card is missing its attachment', () => {
+    render(
+      <MessageAcpToolCall
+        message={createMessage({
+          ...asyncImageUpdate,
+          raw_output: { async_image: {}, saved_path: '/workspace/unrelated.png' },
+        })}
+      />
+    );
+
+    expect(screen.getByText('common.success')).toBeInTheDocument();
+    expect(screen.queryByTestId('local-image')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'acp.image.download_aria' })).not.toBeInTheDocument();
+  });
+
   it.each([
     ['provider_quota', 'providerQuota'],
     ['raw-private-provider-error', 'unknown'],
@@ -253,7 +258,7 @@ describe('MessageAcpToolCall image output', () => {
     await waitFor(() => {
       expect(mockMessageError).toHaveBeenCalledWith('acp.image.download_error');
     });
-    expect(consoleError).toHaveBeenCalledWith('[MessageAcpToolCall] Failed to download image:', expect.any(Error));
+    expect(consoleError).toHaveBeenCalledWith(expect.stringContaining('Failed to download image'), expect.any(Error));
     expect(mockMessageSuccess).not.toHaveBeenCalled();
     consoleError.mockRestore();
   });

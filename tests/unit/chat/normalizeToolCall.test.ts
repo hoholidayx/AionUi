@@ -42,8 +42,9 @@ describe('normalizeAcpToolCall', () => {
 
     const normalized = normalizeAcpToolCall(message);
 
-    expect((normalized as { imagePath?: string } | undefined)?.imagePath).toBe(
-      '/Users/test/.codex/generated_images/session/ig_test_image.png'
-    );
+    expect(normalized?.image).toEqual({
+      kind: 'local-path',
+      path: '/Users/test/.codex/generated_images/session/ig_test_image.png',
+    });
   });
 });

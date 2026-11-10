@@ -5,18 +5,16 @@
  */
 
 import type { IMessageAcpToolCall } from '@/common/chat/chatLib';
-import { getAcpAsyncImage, getAcpImageFileName, getAcpImagePath } from '@/common/chat/acpToolCallOutput';
+import { getAcpAsyncImage, getAcpToolImageSource } from '@/common/chat/acpToolCallOutput';
 import FileChangesPanel from '@/renderer/components/base/FileChangesPanel';
-import LocalImageView from '@/renderer/components/media/LocalImageView';
 import { useDiffPreviewHandlers } from '@/renderer/hooks/file/useDiffPreviewHandlers';
 import { parseDiff } from '@/renderer/utils/file/diffUtils';
-import { downloadAsyncImage, downloadFileFromPath } from '@/renderer/utils/file/download';
-import { Button, Card, Message, Tag, Tooltip } from '@arco-design/web-react';
-import { Download } from '@icon-park/react';
+import { Card, Tag } from '@arco-design/web-react';
 import { createTwoFilesPatch } from 'diff';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import MarkdownView from '@renderer/components/Markdown';
+import ToolImagePreview from '../components/ToolImagePreview';
 
 const ASYNC_IMAGE_FAILURE_KEYS = {
   attachment_not_found: 'invalidReference',
@@ -150,7 +148,6 @@ const getKindDisplayName = (toolKind: string) => {
 
 const MessageAcpToolCall: React.FC<{ message: IMessageAcpToolCall }> = ({ message }) => {
   const { t } = useTranslation();
-  const [messageApi, messageContext] = Message.useMessage();
   const { content } = message;
   if (!content?.update) {
     return null;
@@ -158,31 +155,12 @@ const MessageAcpToolCall: React.FC<{ message: IMessageAcpToolCall }> = ({ messag
   const { update } = content;
   const { tool_call_id, kind, title, status, rawInput, content: diffContent } = update;
   const asyncOutput = getAcpAsyncImage(update);
-  const attachmentId = asyncOutput?.attachment_id;
-  const asyncImage =
-    status === 'completed' && typeof attachmentId === 'string' && attachmentId && message.conversation_id
-      ? { conversationId: message.conversation_id, attachmentId }
-      : undefined;
+  const image = getAcpToolImageSource(update, message.conversation_id);
   const hasOnlyDiffs =
     !asyncOutput &&
     Array.isArray(diffContent) &&
     diffContent.length > 0 &&
     diffContent.every((contentItem) => contentItem.type === 'diff');
-  const imagePath = asyncOutput ? undefined : getAcpImagePath(update);
-  const imageAlt = imagePath?.split(/[/\\]/).pop() || t('acp.image.generated_alt');
-  const handleDownloadImage = async () => {
-    try {
-      if (asyncImage) {
-        await downloadAsyncImage(asyncImage, 'generated-image.png');
-      } else if (imagePath) {
-        await downloadFileFromPath(imagePath, getAcpImageFileName(imagePath));
-      }
-      messageApi.success(t('acp.image.download_success'));
-    } catch (error) {
-      console.error('[MessageAcpToolCall] Failed to download image:', error);
-      messageApi.error(t('acp.image.download_error'));
-    }
-  };
 
   if (hasOnlyDiffs) {
     return (
@@ -196,7 +174,6 @@ const MessageAcpToolCall: React.FC<{ message: IMessageAcpToolCall }> = ({ messag
 
   return (
     <Card className='w-full mb-2' size='small' bordered>
-      {messageContext}
       <div className='flex items-start gap-3'>
         <div className='flex-1 min-w-0'>
           <div className='flex items-center gap-2 mb-2'>
@@ -219,27 +196,7 @@ const MessageAcpToolCall: React.FC<{ message: IMessageAcpToolCall }> = ({ messag
               )}
             </div>
           )}
-          {(imagePath || asyncImage) && (
-            <div className='group relative mt-3 overflow-hidden rounded border bg-1 p-2'>
-              <LocalImageView
-                src={imagePath}
-                asyncImage={asyncImage}
-                alt={imageAlt}
-                className='max-w-full max-h-[520px] object-contain rounded'
-              />
-              <Tooltip content={t('acp.image.download')}>
-                <Button
-                  aria-label={t('acp.image.download_aria')}
-                  className='!absolute end-10px top-10px !h-28px !w-28px !p-0 opacity-0 shadow-sm transition-opacity group-hover:opacity-90 focus:opacity-100'
-                  type='secondary'
-                  size='mini'
-                  shape='circle'
-                  icon={<Download theme='outline' size='14' />}
-                  onClick={() => void handleDownloadImage()}
-                />
-              </Tooltip>
-            </div>
-          )}
+          {image && <ToolImagePreview source={image} variant='standalone' />}
           {!asyncOutput && diffContent && diffContent.length > 0 && (
             <div>
               {diffContent.map((item, index) => (

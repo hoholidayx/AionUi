@@ -113,12 +113,7 @@ const MessageToolCall: React.FC<{ message: IMessageToolCall }> = ({ message }) =
           )}
         </div>
       )}
-      {normalized.imagePath && message.conversation_id && (
-        <ToolImagePreview
-          path={normalized.imagePath}
-          toolImage={{ conversationId: message.conversation_id, messageId: normalized.key }}
-        />
-      )}
+      {normalized.image && <ToolImagePreview source={normalized.image} />}
     </div>
   );
 };

@@ -6,6 +6,7 @@
 
 import type { AcpRawOutput, AsyncImageOutput, ToolCallUpdate } from '@/common/types/platform/acpTypes';
 import type { IResponseMessage } from '@/common/adapter/ipcBridge';
+import type { ToolImageSource } from '@/common/types/chatFile';
 import type { IMessageAcpToolCall, IMessageToolCall } from './chatLib';
 
 const INLINE_IMAGE_RESULT_LIMIT = 64 * 1024;
@@ -85,7 +86,8 @@ export const getAcpImagePath = (update: ToolCallUpdate['update']): string | unde
   return undefined;
 };
 
-export const getAcpImageFileName = (path: string): string => path.split(/[/\\]/).pop() || 'generated-image.png';
+export const getAcpImageFileName = (path?: string, fallback = 'generated-image.png'): string =>
+  path?.split(/[/\\]/).pop() || fallback;
 
 export const getAcpAsyncImage = (update?: ToolCallUpdate['update']): AsyncImageOutput | undefined => {
   if (typeof update?.tool_call_id !== 'string' || !update.tool_call_id.startsWith('async-image:')) return undefined;
@@ -93,6 +95,23 @@ export const getAcpAsyncImage = (update?: ToolCallUpdate['update']): AsyncImageO
   const output = update.raw_output?.async_image ?? update.rawOutput?.async_image;
   return output && typeof output === 'object' && !Array.isArray(output) ? output : undefined;
 };
+
+export function getAcpToolImageSource(
+  update: ToolCallUpdate['update'],
+  conversationId?: string
+): ToolImageSource | undefined {
+  const asyncOutput = getAcpAsyncImage(update);
+  if (asyncOutput) {
+    const attachmentId = asyncOutput.attachment_id;
+    if (update.status === 'completed' && conversationId && typeof attachmentId === 'string' && attachmentId) {
+      return { kind: 'async-attachment', ref: { conversationId, attachmentId } };
+    }
+    return undefined;
+  }
+
+  const path = getAcpImagePath(update);
+  return path ? { kind: 'local-path', path } : undefined;
+}
 
 /** Projects pre-queue failures as standalone image cards, including older conversation rows. */
 export const getAsyncImageAdmissionFailure = (message: IMessageToolCall): IMessageAcpToolCall | undefined => {

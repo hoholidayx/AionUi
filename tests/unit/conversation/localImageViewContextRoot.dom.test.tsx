@@ -13,8 +13,9 @@
  */
 
 import React from 'react';
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import type { ToolImageSource } from '@/common/types/chatFile';
 
 const hoisted = vi.hoisted(() => ({
   getImageBase64: vi.fn(() => Promise.resolve<string | null>(null)),
@@ -48,9 +49,23 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-it('reads an asynchronous attachment from the original conversation and releases its preview on unmount', async () => {
+const asyncPreview = (attachmentId: string) => (
+  <ConversationProvider value={{ conversation_id: 'another-conversation', workspace: '/workspace', type: 'aionrs' }}>
+    <LocalImageView
+      source={{ kind: 'async-attachment', ref: { conversationId: 'original-conversation', attachmentId } }}
+      alt='demo'
+    />
+  </ConversationProvider>
+);
+
+it('reads the original attachment, drops obsolete results, and releases the current preview', async () => {
   const image = new Blob(['image'], { type: 'image/png' });
-  const createObjectURL = vi.fn().mockReturnValue('blob:test-image');
+  let resolveObsolete!: (image: Blob) => void;
+  const obsolete = new Promise<Blob>((resolve) => {
+    resolveObsolete = resolve;
+  });
+  const nextImage = new Blob(['next'], { type: 'image/png' });
+  const createObjectURL = vi.fn().mockReturnValueOnce('blob:test-image').mockReturnValueOnce('blob:next-image');
   const revokeObjectURL = vi.fn();
   vi.stubGlobal(
     'URL',
@@ -59,44 +74,65 @@ it('reads an asynchronous attachment from the original conversation and releases
       static revokeObjectURL = revokeObjectURL;
     }
   );
-  hoisted.getAsyncImage.mockResolvedValueOnce(image);
+  hoisted.getAsyncImage.mockResolvedValueOnce(image).mockReturnValueOnce(obsolete).mockResolvedValueOnce(nextImage);
 
-  const { unmount } = render(
-    <ConversationProvider value={{ conversation_id: 'another-conversation', workspace: '/workspace', type: 'aionrs' }}>
-      <LocalImageView asyncImage={{ conversationId: 'original-conversation', attachmentId: 'image-1' }} alt='demo' />
-    </ConversationProvider>
-  );
+  const { rerender, unmount } = render(asyncPreview('image-1'));
   expect(await screen.findByRole('img', { name: 'demo' })).toHaveAttribute('src', 'blob:test-image');
   expect(hoisted.getAsyncImage).toHaveBeenCalledWith({
     conversationId: 'original-conversation',
     attachmentId: 'image-1',
   });
-  expect(hoisted.getImageBase64).not.toHaveBeenCalled();
   expect(createObjectURL).toHaveBeenCalledWith(image);
 
-  unmount();
+  rerender(asyncPreview('pending-image'));
+  expect(screen.queryByRole('img')).not.toBeInTheDocument();
   expect(revokeObjectURL).toHaveBeenCalledWith('blob:test-image');
+  rerender(asyncPreview('new-image'));
+  expect(await screen.findByRole('img', { name: 'demo' })).toHaveAttribute('src', 'blob:next-image');
+  await act(async () => resolveObsolete(image));
+  expect(createObjectURL).toHaveBeenCalledTimes(2);
+  expect(hoisted.getImageBase64).not.toHaveBeenCalled();
+
+  unmount();
+  expect(revokeObjectURL).toHaveBeenCalledWith('blob:next-image');
 });
 
 it('explains when the asynchronous image attachment is unavailable', async () => {
   hoisted.getAsyncImage.mockResolvedValueOnce(null);
 
   render(
-    <LocalImageView asyncImage={{ conversationId: 'original-conversation', attachmentId: 'image-1' }} alt='demo' />
+    <LocalImageView
+      source={{ kind: 'async-attachment', ref: { conversationId: 'original-conversation', attachmentId: 'image-1' } }}
+      alt='demo'
+    />
   );
 
   expect(await screen.findByText('acp.image.asyncFailure.outputUnavailable')).toBeInTheDocument();
   expect(screen.queryByRole('img')).not.toBeInTheDocument();
 });
 
-it('requests a generated tool image by conversation and call ID even when the file is unavailable', async () => {
-  hoisted.getToolImage.mockResolvedValueOnce(undefined);
-  const ref = { conversationId: 'conv-1', messageId: 'image-call' };
-  render(<LocalImageView toolImage={ref} alt='demo' unavailableText='Image unavailable' />);
+const scopedSources = [
+  { kind: 'tool-message', ref: { conversationId: 'conv-1', messageId: 'image-call' }, fileName: 'result.png' },
+  { kind: 'async-attachment', ref: { conversationId: 'conv-1', attachmentId: 'image-1' } },
+] satisfies ToolImageSource[];
 
-  expect(await screen.findByText('Image unavailable')).toBeInTheDocument();
-  expect(hoisted.getToolImage).toHaveBeenCalledWith(ref);
+it.each(scopedSources)('shows unavailable for a rejected $kind without reading a local path', async (source) => {
+  const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+  const read = source.kind === 'tool-message' ? hoisted.getToolImage : hoisted.getAsyncImage;
+  read.mockRejectedValueOnce(new Error('Access denied'));
+  render(<LocalImageView source={source} alt='demo' />);
+
+  expect(await screen.findByText('acp.image.asyncFailure.outputUnavailable')).toBeInTheDocument();
+  expect(read).toHaveBeenCalledWith(source.ref);
   expect(hoisted.getImageBase64).not.toHaveBeenCalled();
+  expect(screen.queryByRole('img')).not.toBeInTheDocument();
+  consoleError.mockRestore();
+});
+
+it('shows unavailable for an unreadable generated path instead of using the path as an image URL', async () => {
+  render(<LocalImageView source={{ kind: 'local-path', path: '/missing.png' }} alt='demo' />);
+  expect(await screen.findByText('acp.image.asyncFailure.outputUnavailable')).toBeInTheDocument();
+  expect(screen.queryByRole('img')).not.toBeInTheDocument();
 });
 
 const renderInConversation = (workspace: string | undefined, src: string) =>

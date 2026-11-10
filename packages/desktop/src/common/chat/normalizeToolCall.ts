@@ -1,5 +1,7 @@
+import type { ToolImageSource } from '@/common/types/chatFile';
 import type { IMessageAcpToolCall, IMessageToolCall, IMessageToolGroup } from './chatLib';
-import { getAcpImagePath } from './acpToolCallOutput';
+import { isCodexImageToolCall } from './chatLib';
+import { getAcpImageFileName, getAcpToolImageSource } from './acpToolCallOutput';
 
 export type NormalizedToolStatus = 'pending' | 'running' | 'completed' | 'error' | 'canceled';
 
@@ -13,7 +15,7 @@ export interface NormalizedToolCall {
   truncated?: boolean;
   messageId?: string;
   conversationId?: string;
-  imagePath?: string;
+  image?: ToolImageSource;
 }
 
 const formatValue = (value: unknown): string => {
@@ -178,7 +180,7 @@ export function normalizeAcpToolCall(message: IMessageAcpToolCall): NormalizedTo
     truncated: content?._compact?.truncated === true,
     messageId: message.id,
     conversationId: message.conversation_id,
-    imagePath: getAcpImagePath(update),
+    image: getAcpToolImageSource(update, message.conversation_id),
   };
 }
 
@@ -209,6 +211,15 @@ export function normalizeToolCall(message: IMessageToolCall): NormalizedToolCall
       ? formatValue(args)
       : undefined;
 
+  const imageSource: ToolImageSource | undefined =
+    status === 'completed' && isCodexImageToolCall(message.content) && image?.path && message.conversation_id
+      ? {
+          kind: 'tool-message',
+          ref: { conversationId: message.conversation_id, messageId: call_id },
+          fileName: getAcpImageFileName(image.path),
+        }
+      : undefined;
+
   return {
     key: call_id,
     name,
@@ -216,7 +227,7 @@ export function normalizeToolCall(message: IMessageToolCall): NormalizedToolCall
     description: description || undefined,
     input: displayInput,
     output,
-    imagePath: status === 'completed' ? image?.path : undefined,
+    image: imageSource,
   };
 }
 

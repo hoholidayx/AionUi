@@ -1,10 +1,10 @@
 # ACP 图片输出展示
 
-AionUi 对 ACP 工具调用中的图片结果使用文件路径或会话附件引用按需展示。
+AionUi 按需读取 ACP 工具路径、Codex 工具消息图片和异步生图附件。三类结果共用预览、下载和错误提示。
 
 ## 数据约定
 
-后端会把 Codex 图片生成工具的大型 `raw_output.result` base64 清洗掉，并保留小型字段：
+对通过 ACP 上报的 Codex 图片结果，后端会清理大型 `raw_output.result` base64 并保留图片路径等小型字段。
 
 - `rawOutput.image.path` 或 `raw_output.image.path`：生成图片的本地路径
 - `rawOutput.saved_path` 或 `raw_output.saved_path`：兼容 Codex 当前返回结构的本地路径
@@ -13,14 +13,13 @@ AionUi 对 ACP 工具调用中的图片结果使用文件路径或会话附件�
 
 ## 渲染流程
 
-`MessageAcpToolCall` 优先读取 `image.path`，没有时回退到 `saved_path`。
-本地图片通过 `/api/fs/image-base64` 按需读取，再交给 `LocalImageView`
-渲染。这样可以避免聊天消息列表、WebSocket 事件和 SQLite 消息记录承载
-MB 级 base64。
+图片在进入展示组件前按来源区分，并沿用各自的访问接口。
 
-对话列表会把工具调用聚合到 `View Steps` 摘要中。ACP 图片工具调用在进入
-`MessageToolGroupSummary` 前会通过标准化层保留 `image.path`，因此聚合视图
-展开后也能展示同一张本地图片，并提供下载按钮把图片保存到本机。
+- ACP 本地图片优先使用 `image.path`，兼容旧消息中的 `saved_path`。预览通过 `/api/fs/image-base64` 读取，会话工作区用于解析相对路径和校验范围。下载沿用文件接口的原有允许目录。
+- Codex 工具图片通过 `/api/conversations/{conversationId}/messages/{messageId}/image` 读取。引用使用工具消息所属会话和工具调用 ID，路径只用于提取文件名。
+- 异步生图完成后，通过 `/api/conversations/{conversationId}/async-images/{attachmentId}` 读取。引用使用原消息所属会话和结果附件 ID。
+
+Codex 和异步任务各自显示在独立卡片中，普通 ACP 图片显示在展开的 `View Steps` 中。三类图片都由 `ToolImagePreview` 提供预览和下载。会话图片读取失败时直接显示不可用提示。异步任务的排队、执行及失败原因由原卡片展示。
 
 ## 前端兜底
 
@@ -34,7 +33,9 @@ MB 级 base64。
 
 - `acpToolCallOutput.test.ts` 覆盖图片路径提取、文件名生成和 base64 清洗。
 - `messageHooks.dom.test.tsx` 覆盖空列表、非空列表和 `add=true` 路径下的 ACP 图片消息清洗。
-- `MessageAcpToolCall.dom.test.tsx` 与 `MessageToolGroupSummary.dom.test.tsx` 覆盖图片预览、下载成功调用和下载失败提示。
+- `MessageAcpToolCall.dom.test.tsx` 与 `MessageToolGroupSummary.dom.test.tsx` 覆盖三种来源的预览、下载分流和失败提示。
+
+`tests/unit/conversation/localImageViewContextRoot.dom.test.tsx` 验证会话图片读取失败时直接提示不可用、切换图片时丢弃过期结果、释放 Blob URL，以及 Markdown 图片的工作区路径解析。
 
 ## 接入异步生图 MCP
 

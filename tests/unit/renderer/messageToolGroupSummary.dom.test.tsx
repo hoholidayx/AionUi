@@ -13,11 +13,14 @@ vi.mock('@/common', () => ({
         invoke: vi.fn(),
       },
     },
+    fs: {
+      getImageBase64: { invoke: vi.fn().mockResolvedValue('data:image/png;base64,aW1hZ2U=') },
+    },
   },
 }));
 
 describe('MessageToolGroupSummary', () => {
-  it('loads full tool content when expanding a compact history item', async () => {
+  it('shows the full output and its image when expanding a compact history item', async () => {
     const invoke = vi.mocked(ipcBridge.database.getConversationMessage.invoke);
     invoke.mockResolvedValue({
       id: 'message-1',
@@ -31,6 +34,7 @@ describe('MessageToolGroupSummary', () => {
           title: 'rg',
           kind: 'search',
           raw_input: { pattern: 'needle', path: '.' },
+          raw_output: { saved_path: '/workspace/full-result.png' },
           content: [{ type: 'content', content: { type: 'text', text: 'full output' } }],
         },
       },
@@ -74,5 +78,9 @@ describe('MessageToolGroupSummary', () => {
       });
     });
     expect(await screen.findByText('full output')).toBeInTheDocument();
+    expect(await screen.findByRole('img', { name: 'full-result.png' })).toHaveAttribute(
+      'src',
+      'data:image/png;base64,aW1hZ2U='
+    );
   });
 });

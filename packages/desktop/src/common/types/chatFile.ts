@@ -4,6 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import type { AsyncImageRef } from './platform/acpTypes';
+
 /**
  * A file reference sent with a chat message. Mirrors the aioncore `ChatFileRef`
  * serde shape (internally-tagged on `kind`) — the backend is the source of
@@ -28,6 +30,12 @@ export type ChatFileRef =
 
 /** A generated tool image addressed by its conversation and tool-call ID. */
 export type ToolImageRef = { conversationId: string; messageId: string };
+
+/** Renderer source for a generated image. Each kind has its own read boundary. */
+export type ToolImageSource =
+  | { kind: 'local-path'; path: string }
+  | { kind: 'tool-message'; ref: ToolImageRef; fileName: string }
+  | { kind: 'async-attachment'; ref: AsyncImageRef };
 
 /**
  * How `POST /api/fs/content` encodes returned file content. Mirrors the aioncore

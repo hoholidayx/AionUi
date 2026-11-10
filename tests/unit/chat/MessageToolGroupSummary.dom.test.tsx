@@ -8,7 +8,7 @@ import React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { IMessageAcpToolCall, IMessageToolCall } from '@/common/chat/chatLib';
-import type { ToolImageRef } from '@/common/types/chatFile';
+import type { ToolImageSource } from '@/common/types/chatFile';
 import MessageToolCall from '@/renderer/pages/conversation/Messages/components/MessageToolCall';
 import MessageToolGroupSummary from '@/renderer/pages/conversation/Messages/components/MessageToolGroupSummary';
 
@@ -19,8 +19,13 @@ const mockMessageError = vi.fn();
 
 vi.mock('@/renderer/components/media/LocalImageView', () => ({
   __esModule: true,
-  default: ({ src, alt, toolImage }: { src?: string; alt: string; toolImage?: ToolImageRef }) => (
-    <img src={src} alt={alt} data-testid='local-image' data-tool-message={toolImage?.messageId} />
+  default: ({ source, alt }: { source: ToolImageSource; alt: string }) => (
+    <img
+      src={source.kind === 'local-path' ? source.path : undefined}
+      alt={alt}
+      data-testid='local-image'
+      data-tool-message={source.kind === 'tool-message' ? source.ref.messageId : undefined}
+    />
   ),
 }));
 
@@ -52,7 +57,13 @@ describe('standalone Codex image output', () => {
     id: 'live-ui-message-id',
     conversation_id: 'conv-1',
     type: 'tool_call',
-    content: { call_id: 'image-call', name: 'imageGeneration', args: {}, status: 'completed', image },
+    content: {
+      call_id: 'image-call',
+      name: 'imageGeneration',
+      args: { type: 'imageGeneration' },
+      status: 'completed',
+      image,
+    },
   };
 
   it('renders the preview and downloads the file without expanding tool details', () => {
@@ -69,6 +80,42 @@ describe('standalone Codex image output', () => {
   it.each(['error', 'canceled'] as const)('hides the preview for a %s call', (status) => {
     render(<MessageToolCall message={{ ...message, content: { ...message.content, status } }} />);
     expect(screen.queryByTestId('local-image')).not.toBeInTheDocument();
+  });
+
+  it('keeps the scoped Codex reference when rendered in View Steps', () => {
+    mockDownloadToolImage.mockClear();
+    mockDownloadFileFromPath.mockClear();
+    render(<MessageToolGroupSummary messages={[message]} />);
+    fireEvent.click(screen.getByText('View Steps · 1'));
+
+    const preview = screen.getByTestId('local-image');
+    expect(preview).toHaveAttribute('data-tool-message', 'image-call');
+    expect(preview).not.toHaveAttribute('src');
+    fireEvent.click(screen.getByLabelText('acp.image.download_aria'));
+    expect(mockDownloadToolImage).toHaveBeenCalledWith(
+      { conversationId: 'conv-1', messageId: 'image-call' },
+      'generated.png'
+    );
+    expect(mockDownloadFileFromPath).not.toHaveBeenCalled();
+  });
+
+  it('does not turn a Codex path into a file read when the conversation ID is unavailable', () => {
+    render(<MessageToolCall message={{ ...message, conversation_id: '' }} />);
+    expect(screen.queryByTestId('local-image')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('acp.image.download_aria')).not.toBeInTheDocument();
+  });
+
+  it('reports a rejected Codex download without retrying by path', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    mockDownloadToolImage.mockRejectedValueOnce(new Error('denied'));
+    mockDownloadFileFromPath.mockClear();
+    mockMessageError.mockClear();
+    render(<MessageToolCall message={message} />);
+    fireEvent.click(screen.getByLabelText('acp.image.download_aria'));
+
+    await waitFor(() => expect(mockMessageError).toHaveBeenCalledWith('acp.image.download_error'));
+    expect(mockDownloadFileFromPath).not.toHaveBeenCalled();
+    consoleError.mockRestore();
   });
 });
 

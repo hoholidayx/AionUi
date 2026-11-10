@@ -30,8 +30,8 @@ const ToolItemDetail: React.FC<{ item: NormalizedToolCall }> = ({ item }) => {
   const [fullItem, setFullItem] = useState<NormalizedToolCall | null>(null);
   const [loadingFull, setLoadingFull] = useState(false);
   const [loadError, setLoadError] = useState(false);
-  const displayItem = fullItem ?? item;
-  const hasDetail = displayItem.input || displayItem.output || item.truncated || item.imagePath;
+  const displayItem = item.truncated && fullItem ? fullItem : item;
+  const hasDetail = displayItem.input || displayItem.output || item.truncated || displayItem.image;
   const loadFullItem = async () => {
     if (!item.truncated || fullItem || loadingFull || !item.conversationId || !item.messageId) return;
     setLoadingFull(true);
@@ -97,7 +97,7 @@ const ToolItemDetail: React.FC<{ item: NormalizedToolCall }> = ({ item }) => {
           )}
         </div>
       )}
-      {item.imagePath && <ToolImagePreview path={item.imagePath} />}
+      {displayItem.image && <ToolImagePreview source={displayItem.image} />}
     </div>
   );
 };
@@ -126,7 +126,7 @@ const MessageToolGroupSummary: React.FC<{ messages: ToolMessage[] }> = ({ messag
       {showMore && (
         <div className='tool-group-summary__body'>
           {tools.map((item) => (
-            <ToolItemDetail key={item.key} item={item} />
+            <ToolItemDetail key={JSON.stringify([item.conversationId, item.messageId, item.key])} item={item} />
           ))}
         </div>
       )}
