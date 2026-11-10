@@ -66,15 +66,14 @@ const srcPkg = JSON.parse(fs.readFileSync(path.join(projectRoot, 'packages/web-c
 srcPkg.version = version;
 fs.writeFileSync(path.join(tarballContentDir, 'package.json'), JSON.stringify(srcPkg, null, 2) + '\n');
 
-// 6. Copy static files (SPA) from desktop renderer build output
-// Note: electron-vite writes to the repo-root `out/`, NOT packages/desktop/out/
+// 6. Copy the standalone Web build and its precompressed assets.
 console.log('6. Copying static files...');
-const rendererOutDir = path.join(projectRoot, 'out/renderer');
+const rendererOutDir = path.join(projectRoot, 'out/web-renderer');
 const staticDest = path.join(tarballContentDir, 'static');
 if (fs.existsSync(rendererOutDir)) {
   fs.cpSync(rendererOutDir, staticDest, { recursive: true });
 } else {
-  throw new Error(`Desktop renderer output not found at ${rendererOutDir}. Run bunx electron-vite build first.`);
+  throw new Error(`Web renderer output not found at ${rendererOutDir}. Run bun run build:web first.`);
 }
 
 // 7. Copy bundled-aioncore

@@ -1,10 +1,10 @@
-import React, { Suspense } from 'react';
+import React, { Suspense, useCallback, useEffect, useState } from 'react';
 import { HashRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import AppLoader from '@renderer/components/layout/AppLoader';
 import DocumentTitle from '@renderer/components/layout/DocumentTitle';
-import { useCrossSessionRateLimitNotice } from '@/renderer/hooks/system/useCrossSessionRateLimitNotice';
 import { useAuth } from '@renderer/hooks/context/AuthContext';
 import { TEAM_MODE_ENABLED } from '@/common/config/constants';
+import { InitialWebRouteReady } from '@renderer/services/web/initialRouteReady';
 const Conversation = React.lazy(() => import('@renderer/pages/conversation'));
 const Guid = React.lazy(() => import('@renderer/pages/guid'));
 const AgentSettings = React.lazy(() => import('@renderer/pages/settings/AgentSettings'));
@@ -26,9 +26,15 @@ const ScheduledTasksPage = React.lazy(() => import('@renderer/pages/cron/Schedul
 const TaskDetailPage = React.lazy(() => import('@renderer/pages/cron/ScheduledTasksPage/TaskDetailPage'));
 const TeamIndex = React.lazy(() => import('@renderer/pages/team'));
 
-const withRouteFallback = (Component: React.LazyExoticComponent<React.ComponentType>) => (
+function RouteReady({ onReady }: { onReady: () => void }): null {
+  useEffect(onReady, [onReady]);
+  return null;
+}
+
+const withRouteFallback = (Component: React.LazyExoticComponent<React.ComponentType>, onReady?: () => void) => (
   <Suspense fallback={<AppLoader />}>
     <Component />
+    {onReady && <RouteReady onReady={onReady} />}
   </Suspense>
 );
 
@@ -43,11 +49,7 @@ const CapabilitiesRedirect: React.FC = () => {
 };
 
 const ProtectedLayout: React.FC<{ layout: React.ReactElement }> = ({ layout }) => {
-  const { status, user } = useAuth();
-  // Mounted once for every authenticated route: the loop warning has to reach
-  // the user even when they are looking at a THIRD conversation, which is the
-  // whole reason it is a broadcast rather than an in-conversation banner.
-  useCrossSessionRateLimitNotice(user?.id);
+  const { status } = useAuth();
 
   if (status === 'checking') {
     return <AppLoader />;
@@ -57,11 +59,21 @@ const ProtectedLayout: React.FC<{ layout: React.ReactElement }> = ({ layout }) =
     return <Navigate to='/login' replace />;
   }
 
-  return React.cloneElement(layout);
+  return <Suspense fallback={<AppLoader />}>{layout}</Suspense>;
 };
 
 const PanelRoute: React.FC<{ layout: React.ReactElement }> = ({ layout }) => {
   const { status } = useAuth();
+  const isWebBuild = import.meta.env.MODE === 'web';
+  const [initialRouteReady, setInitialRouteReady] = useState(false);
+  const markInitialRouteReady = useCallback(() => setInitialRouteReady(true), []);
+
+  useEffect(() => {
+    if (isWebBuild && status !== 'authenticated') setInitialRouteReady(false);
+  }, [isWebBuild, status]);
+
+  const protectedPage = (Component: React.LazyExoticComponent<React.ComponentType>) =>
+    withRouteFallback(Component, isWebBuild ? markInitialRouteReady : undefined);
 
   return (
     <HashRouter>
@@ -71,26 +83,32 @@ const PanelRoute: React.FC<{ layout: React.ReactElement }> = ({ layout }) => {
           path='/login'
           element={status === 'authenticated' ? <Navigate to='/guid' replace /> : withRouteFallback(LoginPage)}
         />
-        <Route element={<ProtectedLayout layout={layout} />}>
+        <Route
+          element={
+            <InitialWebRouteReady.Provider value={!isWebBuild || initialRouteReady}>
+              <ProtectedLayout layout={layout} />
+            </InitialWebRouteReady.Provider>
+          }
+        >
           <Route index element={<Navigate to='/guid' replace />} />
-          <Route path='/guid' element={withRouteFallback(Guid)} />
-          <Route path='/conversation/:id' element={withRouteFallback(Conversation)} />
+          <Route path='/guid' element={protectedPage(Guid)} />
+          <Route path='/conversation/:id' element={protectedPage(Conversation)} />
           <Route
             path='/team/:id'
-            element={TEAM_MODE_ENABLED ? withRouteFallback(TeamIndex) : <Navigate to='/guid' replace />}
+            element={TEAM_MODE_ENABLED ? protectedPage(TeamIndex) : <Navigate to='/guid' replace />}
           />
-          <Route path='/settings/model' element={withRouteFallback(ModeSettings)} />
-          <Route path='/assistants' element={withRouteFallback(AssistantSettings)} />
+          <Route path='/settings/model' element={protectedPage(ModeSettings)} />
+          <Route path='/assistants' element={protectedPage(AssistantSettings)} />
           {/* Assistants moved out of Settings to a top-level entry; keep a redirect
               so old deep links / back-nav still land on the new page. */}
           <Route path='/settings/assistants' element={<Navigate to='/assistants' replace />} />
-          <Route path='/settings/agent' element={withRouteFallback(AgentSettings)} />
-          <Route path='/settings/agent/:id/repair' element={withRouteFallback(AgentRepairPage)} />
+          <Route path='/settings/agent' element={protectedPage(AgentSettings)} />
+          <Route path='/settings/agent/:id/repair' element={protectedPage(AgentRepairPage)} />
           {/* Skills and Tools are top-level settings entries. */}
-          <Route path='/settings/skills' element={withRouteFallback(SkillsSettings)} />
-          <Route path='/settings/skills/import-history' element={withRouteFallback(SkillsSettings)} />
-          <Route path='/settings/skills/detail/:skillName' element={withRouteFallback(SkillDetailPage)} />
-          <Route path='/settings/tools' element={withRouteFallback(ToolsSettings)} />
+          <Route path='/settings/skills' element={protectedPage(SkillsSettings)} />
+          <Route path='/settings/skills/import-history' element={protectedPage(SkillsSettings)} />
+          <Route path='/settings/skills/detail/:skillName' element={protectedPage(SkillDetailPage)} />
+          <Route path='/settings/tools' element={protectedPage(ToolsSettings)} />
           {/* Legacy routes — the previous combined "Capabilities" page is now two pages. */}
           <Route path='/settings/capabilities' element={<CapabilitiesRedirect />} />
           <Route
@@ -98,18 +116,18 @@ const PanelRoute: React.FC<{ layout: React.ReactElement }> = ({ layout }) => {
             element={<Navigate to='/settings/skills/import-history' replace />}
           />
           <Route path='/settings/skills-hub' element={<Navigate to='/settings/skills' replace />} />
-          <Route path='/settings/appearance' element={withRouteFallback(AppearanceSettings)} />
+          <Route path='/settings/appearance' element={protectedPage(AppearanceSettings)} />
           <Route path='/settings/display' element={<Navigate to='/settings/appearance' replace />} />
-          <Route path='/settings/webui' element={withRouteFallback(WebuiSettings)} />
-          <Route path='/settings/pet' element={withRouteFallback(PetSettings)} />
-          <Route path='/settings/archived' element={withRouteFallback(ArchivedSettings)} />
-          <Route path='/settings/system' element={withRouteFallback(SystemSettings)} />
-          <Route path='/settings/about' element={withRouteFallback(SystemSettings)} />
-          <Route path='/settings/ext/:tabId' element={withRouteFallback(ExtensionSettingsPage)} />
+          <Route path='/settings/webui' element={protectedPage(WebuiSettings)} />
+          <Route path='/settings/pet' element={protectedPage(PetSettings)} />
+          <Route path='/settings/archived' element={protectedPage(ArchivedSettings)} />
+          <Route path='/settings/system' element={protectedPage(SystemSettings)} />
+          <Route path='/settings/about' element={protectedPage(SystemSettings)} />
+          <Route path='/settings/ext/:tabId' element={protectedPage(ExtensionSettingsPage)} />
           <Route path='/settings' element={<Navigate to='/settings/agent' replace />} />
-          <Route path='/test/components' element={withRouteFallback(ComponentsShowcase)} />
-          <Route path='/scheduled' element={withRouteFallback(ScheduledTasksPage)} />
-          <Route path='/scheduled/:job_id' element={withRouteFallback(TaskDetailPage)} />
+          <Route path='/test/components' element={protectedPage(ComponentsShowcase)} />
+          <Route path='/scheduled' element={protectedPage(ScheduledTasksPage)} />
+          <Route path='/scheduled/:job_id' element={protectedPage(TaskDetailPage)} />
         </Route>
         <Route path='*' element={<Navigate to={status === 'authenticated' ? '/guid' : '/login'} replace />} />
       </Routes>

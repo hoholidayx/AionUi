@@ -5,6 +5,7 @@ import { once } from 'node:events';
 import { connect, type AddressInfo } from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
+import { brotliCompressSync, gzipSync } from 'node:zlib';
 import { startStaticServer, type StaticServerHandle } from './static-server.js';
 
 async function mkRendererFixture(): Promise<string> {
@@ -74,6 +75,62 @@ describe('static-server', () => {
     const r = await fetch(`${handle.localUrl}/assets/main.js`);
     expect(r.status).toBe(200);
     expect(await r.text()).toContain('hi');
+  });
+
+  it('negotiates compressed hashed assets and revalidates the selected representation', async () => {
+    const asset = 'assets/main-AbC_12-d.js';
+    const source = Buffer.from('console.log("compressed")');
+    await fs.writeFile(path.join(staticDir, asset), source);
+    await fs.writeFile(path.join(staticDir, `${asset}.br`), brotliCompressSync(source));
+    await fs.writeFile(path.join(staticDir, `${asset}.gz`), gzipSync(source));
+    handle = await startStaticServer({ staticDir, backendPort: 0, port: 0 });
+    const url = `${handle.localUrl}/${asset}`;
+    const gzip = await fetch(url, { headers: { 'Accept-Encoding': 'br;q=0, gzip;q=0.7' } });
+    expect(gzip.headers.get('Content-Encoding')).toBe('gzip');
+    expect(gzip.headers.get('Vary')).toBe('Accept-Encoding');
+    expect(gzip.headers.get('Cache-Control')).toContain('immutable');
+    expect(await gzip.text()).toBe(source.toString());
+
+    const head = await fetch(url, { method: 'HEAD', headers: { 'Accept-Encoding': 'br, gzip' } });
+    expect(head.headers.get('Content-Encoding')).toBe('br');
+    expect(await head.text()).toBe('');
+    const matched = await fetch(url, {
+      headers: { 'Accept-Encoding': 'br, gzip', 'If-None-Match': head.headers.get('ETag')! },
+    });
+    expect(matched.status).toBe(304);
+
+    const range = await fetch(url, { headers: { Range: 'bytes=0-6', 'Accept-Encoding': 'br, gzip' } });
+    expect(range.status).toBe(206);
+    expect(range.headers.get('Content-Encoding')).toBeNull();
+    expect(await range.text()).toBe('console');
+  });
+
+  it('falls back to identity when sidecars are unavailable and returns 404 for missing assets', async () => {
+    const asset = 'assets/main-AbC_12-d.js';
+    await fs.writeFile(path.join(staticDir, asset), 'console.log("identity")');
+    handle = await startStaticServer({ staticDir, backendPort: 0, port: 0 });
+    const identity = await fetch(`${handle.localUrl}/${asset}`, { headers: { 'Accept-Encoding': 'br, gzip' } });
+    expect(identity.headers.get('Content-Encoding')).toBeNull();
+    expect(identity.headers.get('Vary')).toBe('Accept-Encoding');
+    expect(await identity.text()).toBe('console.log("identity")');
+
+    const missing = await fetch(`${handle.localUrl}/assets/missing-AbC_12-d.js`);
+    expect(missing.status).toBe(404);
+    expect(missing.headers.get('Cache-Control')).toBeNull();
+  });
+
+  it('revalidates HTML and the service worker', async () => {
+    await fs.writeFile(path.join(staticDir, 'sw.js'), 'self.skipWaiting()');
+    handle = await startStaticServer({ staticDir, backendPort: 0, port: 0 });
+    for (const resource of ['/', '/index.html', '/sw.js']) {
+      const url = `${handle.localUrl}${resource}`;
+      const initial = await fetch(url);
+      expect(initial.headers.get('Cache-Control')).toBe('no-cache');
+      expect(initial.headers.get('ETag')).toBeTruthy();
+      await initial.arrayBuffer();
+      const matched = await fetch(url, { headers: { 'If-None-Match': initial.headers.get('ETag')! } });
+      expect(matched.status).toBe(304);
+    }
   });
 
   it('/api/* reverse-proxies to backend', async () => {

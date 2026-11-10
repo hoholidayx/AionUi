@@ -125,7 +125,7 @@ const LoginPage: React.FC = () => {
 
   const handleLanguageChange = useCallback((event: React.ChangeEvent<HTMLSelectElement>) => {
     const nextLanguage = event.target.value;
-    changeLanguage(nextLanguage).catch((error: Error) => {
+    changeLanguage(nextLanguage, import.meta.env.MODE !== 'web').catch((error: Error) => {
       console.error('Failed to change language:', error);
     });
   }, []);

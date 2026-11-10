@@ -8,7 +8,8 @@ import { ipcBridge } from '@/common';
 import type { ICronJob, ICronJobUpdateParams } from '@/common/adapter/ipcBridge';
 import type { TChatConversation } from '@/common/config/storage';
 import { emitter } from '@/renderer/utils/emitter';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { InitialWebRouteReady } from '@renderer/services/web/initialRouteReady';
 import { repairCronJobTimeZones } from '@renderer/pages/cron/repairCronJobTimeZone';
 import { formatCronRunConversationTitle } from '@renderer/pages/cron/cronUtils';
 import { getActivityTime } from '@/renderer/utils/chat/timeline';
@@ -277,6 +278,7 @@ export function useAllCronJobs() {
  * Used by ChatHistory to show indicators
  */
 export function useCronJobsMap() {
+  const initialRouteReady = useContext(InitialWebRouteReady);
   const [jobsMap, setJobsMap] = useState<Map<string, ICronJob[]>>(new Map());
   const [loading, setLoading] = useState(true);
   // Track conversations with unread cron executions (red dot indicator)
@@ -333,10 +335,23 @@ export function useCronJobsMap() {
     }
   }, []);
 
-  // Initial fetch
   useEffect(() => {
-    void fetchAllJobs();
-  }, [fetchAllJobs]);
+    if (import.meta.env.MODE !== 'web') {
+      void fetchAllJobs();
+      return;
+    }
+    if (!initialRouteReady) return;
+    // Let the initial page paint before the sidebar loads cron badges and
+    // repairs legacy timezones from that response.
+    let afterPaint = 0;
+    const beforePaint = requestAnimationFrame(() => {
+      afterPaint = requestAnimationFrame(() => void fetchAllJobs());
+    });
+    return () => {
+      cancelAnimationFrame(beforePaint);
+      cancelAnimationFrame(afterPaint);
+    };
+  }, [fetchAllJobs, initialRouteReady]);
 
   // Event handlers
   const eventHandlers = useMemo<CronJobEventHandlers>(

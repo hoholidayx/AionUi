@@ -20,11 +20,12 @@ import { useTextSelection } from '@/renderer/hooks/ui/useTextSelection';
 import 'katex/dist/katex.min.css';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
-import MarkdownEditor from '../editors/MarkdownEditor';
 import SelectionToolbar from '../renderers/SelectionToolbar';
 import { useContainerScroll, useContainerScrollTarget } from '../../hooks/useScrollSyncHelpers';
 import { useLocalFilePreview } from '../../hooks';
 import { convertLatexDelimiters } from '@/renderer/utils/chat/latexDelimiters';
+
+const MarkdownEditor = React.lazy(() => import('../editors/MarkdownEditor'));
 
 interface MarkdownPreviewProps {
   content: string; // Markdown 内容 / Markdown content
@@ -354,7 +355,9 @@ const MarkdownPreview: React.FC<MarkdownPreviewProps> = ({
       >
         {viewMode === 'source' ? (
           // 原文模式：使用编辑器 / Source mode: Use editor
-          <MarkdownEditor value={content} onChange={(value) => onContentChange?.(value)} />
+          <React.Suspense fallback={null}>
+            <MarkdownEditor value={content} onChange={(value) => onContentChange?.(value)} />
+          </React.Suspense>
         ) : (
           // 预览模式：react-markdown + KaTeX / Preview mode: react-markdown + KaTeX
           <div

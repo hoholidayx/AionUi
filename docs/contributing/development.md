@@ -90,9 +90,10 @@ From the AionUi repository, build the linked backend.
 )
 ```
 
-For a source WebUI run, set `AIONUI_BACKEND_BIN` to the resulting `target/release/aioncore`. To package it after building the Web renderer, run these commands from AionUi.
+For a source WebUI run, set `AIONUI_BACKEND_BIN` to the resulting `target/release/aioncore`. To build the Web renderer and package it, run these commands from AionUi.
 
 ```bash
+bun run build:web
 bundle_stage=$(mktemp -d)
 bundle_dir="$bundle_stage/bundle"
 mkdir "$bundle_dir"
@@ -202,7 +203,7 @@ Use the Rust MSVC toolchain and install Microsoft C++ Build Tools. After install
 
 | Command                            | Description                                                 |
 | ---------------------------------- | ----------------------------------------------------------- |
-| `bun run build:renderer:web`       | Build renderer for standalone web deployment                |
+| `bun run build:web`                 | Build renderer for standalone web deployment                |
 | `bun run build:server`             | Build standalone server bundle to `dist-server/`            |
 | `bun run server:start`             | Run standalone server in development mode                   |
 | `bun run server:start:remote`      | Run standalone server with remote access                    |

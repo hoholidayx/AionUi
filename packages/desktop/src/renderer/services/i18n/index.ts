@@ -2,32 +2,17 @@ import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 
 import { configService } from '@/common/config/configService';
-import { ipcBridge } from '@/common';
 import i18nConfig from '@/common/config/i18n-config.json';
 import {
   DEFAULT_LANGUAGE,
   normalizeLanguageCode,
   mergeWithFallback,
   ensureAndSwitch,
-  type LocaleData,
   type SupportedLanguage,
 } from '@/common/config/i18n';
 import { applyDocumentDirection } from './direction';
 
-// Static imports for all locales to ensure packaged app can always switch language.
-import enUS from './locales/en-US/index';
-import zhCN from './locales/zh-CN/index';
-import jaJP from './locales/ja-JP/index';
-import zhTW from './locales/zh-TW/index';
-import koKR from './locales/ko-KR/index';
-import trTR from './locales/tr-TR/index';
-import ruRU from './locales/ru-RU/index';
-import ukUA from './locales/uk-UA/index';
-import ptBR from './locales/pt-BR/index';
-import deDE from './locales/de-DE/index';
-import esES from './locales/es-ES/index';
-import frFR from './locales/fr-FR/index';
-import faIR from './locales/fa-IR/index';
+import fallbackLocale from './locales/en-US/index';
 export type { I18nKey, I18nModule } from './i18n-keys';
 
 // Re-exports
@@ -36,36 +21,11 @@ export type { SupportedLanguage } from '@/common/config/i18n';
 
 export const supportedLanguages = i18nConfig.supportedLanguages;
 
-const localeData: LocaleData = {
-  'en-US': enUS,
-  'zh-CN': zhCN,
-  'ja-JP': jaJP,
-  'zh-TW': zhTW,
-  'ko-KR': koKR,
-  'tr-TR': trTR,
-  'ru-RU': ruRU,
-  'uk-UA': ukUA,
-  'pt-BR': ptBR,
-  'de-DE': deDE,
-  'es-ES': esES,
-  'fr-FR': frFR,
-  'fa-IR': faIR,
-};
-
-const fallbackLocale = localeData[DEFAULT_LANGUAGE] ?? {};
-
-// Cache for loaded translations
-const loadedTranslations = new Map<string, Record<string, unknown>>();
-
-// Pre-populate cache with the synchronously loaded fallback locale
-loadedTranslations.set(DEFAULT_LANGUAGE, fallbackLocale as Record<string, unknown>);
-
-function getLocaleModules(locale: string): Record<string, unknown> {
-  const normalized = normalizeLanguageCode(locale);
-  const modules = localeData[normalized] ?? fallbackLocale;
-  if (normalized === DEFAULT_LANGUAGE) return modules;
-  return mergeWithFallback(fallbackLocale, modules);
-}
+const localeLoaders = import.meta.glob<Record<string, unknown>>(['./locales/*/index.ts', '!./locales/en-US/index.ts'], {
+  import: 'default',
+});
+const loadedTranslations = new Map<string, Record<string, unknown>>([[DEFAULT_LANGUAGE, fallbackLocale]]);
+const isWebBuild = import.meta.env.MODE === 'web';
 
 function getLocalStorageLanguageHint(): string | null {
   if (typeof localStorage === 'undefined') return null;
@@ -92,7 +52,7 @@ function getInitialLanguage(): SupportedLanguage {
   const hint = backendStartupFailed
     ? injectedLanguage || localStorageLanguage || systemLanguage
     : localStorageLanguage || injectedLanguage;
-  return normalizeLanguageCode(hint || DEFAULT_LANGUAGE);
+  return normalizeLanguageCode(hint || (isWebBuild ? navigator.language : DEFAULT_LANGUAGE));
 }
 
 async function loadLocaleModules(locale: string): Promise<Record<string, unknown>> {
@@ -100,52 +60,37 @@ async function loadLocaleModules(locale: string): Promise<Record<string, unknown
   const cached = loadedTranslations.get(normalized);
   if (cached) return cached;
 
-  const modules = getLocaleModules(normalized);
+  const load = localeLoaders[`./locales/${normalized}/index.ts`];
+  const modules = load ? mergeWithFallback(fallbackLocale, await load()) : fallbackLocale;
   loadedTranslations.set(normalized, modules);
   return modules;
 }
 
 const initialLanguage = getInitialLanguage();
-const initialResources: Record<string, { translation: Record<string, unknown> }> = {
-  [DEFAULT_LANGUAGE]: {
-    translation: fallbackLocale,
-  },
-};
-if (initialLanguage !== DEFAULT_LANGUAGE) {
-  initialResources[initialLanguage] = {
-    translation: getLocaleModules(initialLanguage),
-  };
-}
-
-// Initialize i18n with fallback and initial locale loaded synchronously to avoid FOUC.
-// NOTE: We intentionally do NOT use i18next-browser-languagedetector here.
-// In WebUI mode the browser's localStorage is on a different origin than the
-// Electron renderer, so the detector would read the wrong (or missing) value
-// and fall back to navigator.language, causing a language mismatch (Issue #1176).
-// Instead, we use localStorage and Electron's injected local config language
-// only as hints for the initial render, then let configService be the source of truth.
-i18n
+export const i18nReady = i18n
   .use(initReactI18next)
   .init({
-    resources: initialResources,
-    lng: initialLanguage,
+    resources: { [DEFAULT_LANGUAGE]: { translation: fallbackLocale } },
+    lng: DEFAULT_LANGUAGE,
     fallbackLng: DEFAULT_LANGUAGE,
     debug: false,
     interpolation: { escapeValue: false },
   })
-  .catch((error: Error) => {
-    console.error('Failed to initialize i18n:', error);
+  .then(() => ensureAndSwitch(i18n, initialLanguage, loadLocaleModules))
+  .catch((error: unknown) => {
+    console.error('Failed to initialize language:', error);
   });
 
 // Load initial language from configService (single source of truth).
 // Wait until configService.whenReady() so we observe the authoritative value
 // fetched from the backend rather than the empty cache that exists during
 // module load.
-async function initLanguage(): Promise<void> {
+export async function syncConfiguredLanguage(): Promise<void> {
   try {
+    await i18nReady;
     await configService.whenReady();
     const savedLanguage = configService.get('language');
-    const language = savedLanguage || normalizeLanguageCode(navigator.language || DEFAULT_LANGUAGE);
+    const language = savedLanguage || (isWebBuild ? getInitialLanguage() : normalizeLanguageCode(navigator.language));
     await ensureAndSwitch(i18n, language, loadLocaleModules);
     // Sync to localStorage so next page load can use it as a fast hint
     if (typeof localStorage !== 'undefined') {
@@ -156,54 +101,43 @@ async function initLanguage(): Promise<void> {
   }
 }
 
-// Listen for language changes and lazy load translations
-i18n.on('languageChanged', async (lang: string) => {
-  const normalizedLang = normalizeLanguageCode(lang);
-  if (i18n.hasResourceBundle(normalizedLang, 'translation')) return;
-
-  try {
-    const translation = await loadLocaleModules(normalizedLang);
-    i18n.addResourceBundle(normalizedLang, 'translation', translation, true, true);
-  } catch (error) {
-    console.error(`Failed to load language ${normalizedLang}:`, error);
-  }
-});
-
-// Keep <html dir>/<html lang> in step with the app language (fa-IR is RTL).
-// Separate listener: the one above early-returns once the bundle is loaded.
-i18n.on('languageChanged', (lang: string) => {
-  applyDocumentDirection(lang);
-});
+i18n.on('languageChanged', applyDocumentDirection);
 applyDocumentDirection(initialLanguage);
 
-// Initialize on module load
-void initLanguage();
+export function subscribeToLanguageChanges(): () => void {
+  let active = true;
+  let unsubscribe: (() => void) | undefined;
+  void import('@/common').then(({ ipcBridge }) => {
+    if (!active) return;
+    unsubscribe = ipcBridge.systemSettings.languageChanged.on(async ({ language }) => {
+      const normalized = normalizeLanguageCode(language);
+      if (i18n.language === normalized) return;
+      try {
+        await ensureAndSwitch(i18n, normalized, loadLocaleModules);
+        localStorage.setItem('i18nextLng', normalized);
+      } catch (error) {
+        console.error('Failed to load language:', error);
+      }
+    });
+  });
+  return () => {
+    active = false;
+    unsubscribe?.();
+  };
+}
 
-// Listen for language changes broadcast by the main process (from other renderers).
-// This enables real-time sync between desktop and WebUI — when one changes language,
-// the other updates immediately without requiring a restart.
-ipcBridge.systemSettings.languageChanged.on(async ({ language }) => {
-  const normalized = normalizeLanguageCode(language);
-  // Skip if already on this language (we're the one who triggered the change)
-  if (i18n.language === normalized) return;
-  await ensureAndSwitch(i18n, normalized, loadLocaleModules);
-  if (typeof localStorage !== 'undefined') {
-    localStorage.setItem('i18nextLng', normalized);
-  }
-});
+if (!isWebBuild) {
+  void syncConfiguredLanguage();
+  subscribeToLanguageChanges();
+}
 
-/**
- * Change language with lazy loading.
- */
-export async function changeLanguage(lang: string): Promise<void> {
-  await ensureAndSwitch(i18n, lang, loadLocaleModules);
+export async function changeLanguage(lang: string, persist = true): Promise<void> {
   const normalized = normalizeLanguageCode(lang);
+  await ensureAndSwitch(i18n, normalized, loadLocaleModules);
+  localStorage.setItem('i18nextLng', normalized);
+  if (!persist) return;
   await configService.set('language', normalized);
-  // Keep localStorage in sync so WebUI can use it as a fast hint on next load
-  if (typeof localStorage !== 'undefined') {
-    localStorage.setItem('i18nextLng', normalized);
-  }
-  // Notify main process to sync i18n (for tray menu, etc.)
+  const { ipcBridge } = await import('@/common');
   ipcBridge.systemSettings.changeLanguage.invoke({ language: normalized }).catch(() => {});
 }
 

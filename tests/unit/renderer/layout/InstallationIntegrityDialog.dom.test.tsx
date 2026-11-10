@@ -43,7 +43,7 @@ vi.mock('@/renderer/services/feedback/submitFeedbackReport', () => ({
 import {
   type InstallationIntegrityDiagnostics,
   InstallationIntegrityFooter,
-} from '@/renderer/components/layout/InstallationIntegrityDialog';
+} from '@/renderer/components/layout/startup/InstallationIntegrityDialog';
 
 const diagnostics: InstallationIntegrityDiagnostics = { source: 'backend_startup_failure' };
 

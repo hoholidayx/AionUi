@@ -109,8 +109,8 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      - name: Build desktop renderer (for static files)
-        run: bunx electron-vite build --config packages/desktop/electron.vite.config.ts
+      - name: Build Web renderer
+        run: bun run build:web
         env:
           NODE_OPTIONS: '--max-old-space-size=8192'
 

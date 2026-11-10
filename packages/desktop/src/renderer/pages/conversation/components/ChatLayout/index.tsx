@@ -10,7 +10,7 @@ import { useContainerWidth } from '@/renderer/pages/conversation/hooks/useContai
 import { useLayoutConstraints } from '@/renderer/pages/conversation/hooks/useLayoutConstraints';
 import { useTitleRename } from '@/renderer/pages/conversation/hooks/useTitleRename';
 import { useWorkspaceCollapse } from '@/renderer/pages/conversation/hooks/useWorkspaceCollapse';
-import { PreviewPanel, usePreviewContext } from '@/renderer/pages/conversation/Preview';
+import { usePreviewContext } from '@/renderer/pages/conversation/Preview/context/PreviewContext';
 import { dispatchWorkspaceToggleEvent } from '@/renderer/utils/workspace/workspaceEvents';
 import classNames from 'classnames';
 import {
@@ -26,6 +26,8 @@ import { createPortal } from 'react-dom';
 import './chat-layout.css';
 
 // headerExtra allows injecting custom actions (e.g., model picker) into the header's right area
+const PreviewPanel = React.lazy(() => import('../../Preview/components/PreviewPanel/PreviewPanel'));
+
 const ChatLayout: React.FC<{
   children: React.ReactNode;
   title?: React.ReactNode;
@@ -319,7 +321,9 @@ const ChatLayout: React.FC<{
                     lineStyle: { width: '2px' },
                   })}
                 <div className={classNames('h-full w-full overflow-hidden', isDesktop ? '' : 'rounded-[15px]')}>
-                  <PreviewPanel />
+                  <React.Suspense fallback={null}>
+                    <PreviewPanel />
+                  </React.Suspense>
                 </div>
               </div>
             )}

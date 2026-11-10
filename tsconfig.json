@@ -2,6 +2,7 @@
   "compilerOptions": {
     "target": "ES6",
     "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "types": ["node", "vite/client"],
     "allowJs": true,
     "module": "esnext",
     "moduleResolution": "bundler",
@@ -25,6 +26,7 @@
     "packages/desktop/src/**/*",
     "uno.config.ts",
     "packages/desktop/electron.vite.config.ts",
+    "packages/desktop/web.vite.config.ts",
     "playwright.config.ts",
     "packages/desktop/src/renderer/types.d.ts"
   ],

@@ -13,7 +13,7 @@
  *   AIONUI_ALLOW_REMOTE   : "1"/"true" to expose to LAN
  *   AIONUI_DATA_DIR       : override userData path (default Electron-compatible)
  *   AIONUI_LOG_DIR        : override log dir (default <dataDir>/logs)
- *   AIONUI_STATIC_DIR     : override static dir (default out/renderer)
+ *   AIONUI_STATIC_DIR     : override static dir (default out/web-renderer)
  *   AIONUI_BACKEND_BIN    : absolute path to aioncore binary (else PATH lookup)
  *   AIONUI_BACKEND_BUNDLED_DIR : dir containing bundled-aioncore/<plat-arch>/binary
  *   AIONUI_OPEN_BROWSER   : "1"/"true" to force open, "0"/"false" to disable
@@ -114,26 +114,28 @@ function resolveAllowRemote(): boolean {
 
 function resolveStaticDir(): string {
   if (process.env.AIONUI_STATIC_DIR) return process.env.AIONUI_STATIC_DIR;
-  const candidate = path.join(repoRoot, 'out', 'renderer');
+  const candidate = path.join(repoRoot, 'out', 'web-renderer');
   if (fs.existsSync(path.join(candidate, 'index.html'))) return candidate;
-  throw new Error(`Renderer assets not found at ${candidate}. Run "bun run package" first, or set AIONUI_STATIC_DIR.`);
+  throw new Error(
+    `Renderer assets not found at ${candidate}. Run "bun run build:web" first, or set AIONUI_STATIC_DIR.`
+  );
 }
 
 /**
- * Rebuild renderer/main bundles before launching, so that `bun run webui` always
+ * Rebuild the Web renderer before launching, so that `bun run webui` always
  * serves the latest source. Skipped when:
  *   --no-build flag           : explicit opt-out (e.g., iterating on this script)
  *   $AIONUI_NO_BUILD=1        : env-level opt-out
  *   $AIONUI_STATIC_DIR is set : caller is pointing us at a prebuilt artifact dir
  */
-function runPackageIfNeeded(): void {
+function buildWebIfNeeded(): void {
   if (has('--no-build')) return;
   if (parseBoolean(process.env.AIONUI_NO_BUILD)) return;
   if (process.env.AIONUI_STATIC_DIR) return;
-  console.log('[webui] running "bun run package" to refresh out/renderer (pass --no-build to skip)...');
+  console.log('[webui] running "bun run build:web" to refresh out/web-renderer (pass --no-build to skip)...');
   const start = Date.now();
-  execSync('bun run package', { cwd: repoRoot, stdio: 'inherit' });
-  console.log(`[webui] package finished in ${((Date.now() - start) / 1000).toFixed(1)}s`);
+  execSync('bun run build:web', { cwd: repoRoot, stdio: 'inherit' });
+  console.log(`[webui] Web build finished in ${((Date.now() - start) / 1000).toFixed(1)}s`);
 }
 
 function resolveBackendBinary(): string {
@@ -201,7 +203,7 @@ async function fetchAdminUsername(backendPort: number): Promise<string> {
 
 async function main(): Promise<void> {
   augmentPathWithNvm();
-  runPackageIfNeeded();
+  buildWebIfNeeded();
   const port = resolvePort();
   const allowRemote = resolveAllowRemote();
   const autoOpenBrowser = shouldAutoOpenBrowser({

@@ -29,18 +29,6 @@ import { usePreviewContext } from '../../context/PreviewContext';
 import { useResizableSplit } from '@/renderer/hooks/ui/useResizableSplit';
 import { Link, Message } from '@arco-design/web-react';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import DiffPreview from '../viewers/DiffViewer';
-import ExcelPreview from '../viewers/ExcelViewer';
-import HTMLEditor from '../editors/HTMLEditor';
-import HTMLRenderer from '../renderers/HTMLRenderer';
-import ImagePreview from '../viewers/ImageViewer';
-import MarkdownEditor from '../editors/MarkdownEditor';
-import MarkdownPreview from '../viewers/MarkdownViewer';
-import PDFPreview from '../viewers/PDFViewer';
-import OfficeDocPreview from '../viewers/OfficeDocViewer';
-import PptViewer from '../viewers/PptViewer';
-import CodeEditor from '../editors/CodeEditor';
-import URLViewer from '../viewers/URLViewer';
 import BrowserTabLayer from '../../browser/BrowserTabLayer';
 import { MAX_BROWSER_TABS } from '../../browser/constants';
 import {
@@ -63,6 +51,19 @@ import {
 import { usePreviewKeyboardShortcuts, useScrollSync, useTabOverflow, useThemeDetection } from '../../hooks';
 import { useTranslation } from 'react-i18next';
 import './preview.css';
+
+const DiffPreview = React.lazy(() => import('../viewers/DiffViewer'));
+const ExcelPreview = React.lazy(() => import('../viewers/ExcelViewer'));
+const HTMLEditor = React.lazy(() => import('../editors/HTMLEditor'));
+const HTMLRenderer = React.lazy(() => import('../renderers/HTMLRenderer'));
+const ImagePreview = React.lazy(() => import('../viewers/ImageViewer'));
+const MarkdownEditor = React.lazy(() => import('../editors/MarkdownEditor'));
+const MarkdownPreview = React.lazy(() => import('../viewers/MarkdownViewer'));
+const PDFPreview = React.lazy(() => import('../viewers/PDFViewer'));
+const OfficeDocPreview = React.lazy(() => import('../viewers/OfficeDocViewer'));
+const PptViewer = React.lazy(() => import('../viewers/PptViewer'));
+const CodeEditor = React.lazy(() => import('../editors/CodeEditor'));
+const URLViewer = React.lazy(() => import('../viewers/URLViewer'));
 
 /**
  * 预览面板主组件
@@ -1268,7 +1269,7 @@ const PreviewPanel: React.FC = () => {
         )}
 
         {/* 预览内容 / Preview content */}
-        {renderContent()}
+        <React.Suspense fallback={null}>{renderContent()}</React.Suspense>
 
         {/* 浏览器层：常驻挂载，切 tab 不重新加载页面
             Browser layer: always mounted so tab switches don't reload pages */}

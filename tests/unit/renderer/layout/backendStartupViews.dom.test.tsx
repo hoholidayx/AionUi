@@ -43,7 +43,7 @@ import {
   getInstallationIntegrityDiagnosticsSentText,
   getInstallationIntegrityModalActions,
   getInstallationIntegrityTitle,
-} from '@/renderer/components/layout/InstallationIntegrityDialog';
+} from '@/renderer/components/layout/startup/InstallationIntegrityDialog';
 
 const echoT = ((key: string) => key) as unknown as Parameters<typeof getInstallationIntegrityTitle>[0];
 

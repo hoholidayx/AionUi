@@ -13,7 +13,7 @@
 import http, { type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import { networkInterfaces } from 'node:os';
 import net, { type Socket } from 'node:net';
-import serveHandler from 'serve-handler';
+import { serveWebStatic } from './web-static.js';
 
 export type StaticServerOptions = {
   staticDir: string;
@@ -189,10 +189,7 @@ export async function startStaticServer(opts: StaticServerOptions): Promise<Stat
       }
 
       // static files + SPA fallback
-      await serveHandler(req, res, {
-        public: opts.staticDir,
-        rewrites: [{ source: '**', destination: '/index.html' }],
-      });
+      await serveWebStatic(req, res, opts.staticDir);
     } catch (err) {
       if (!res.headersSent) {
         res.writeHead(500, { 'content-type': 'application/json' });

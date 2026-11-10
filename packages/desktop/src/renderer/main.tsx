@@ -47,7 +47,6 @@ import type { PropsWithChildren } from 'react';
 import React, { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { SWRConfig } from 'swr';
-import type { TFunction } from 'i18next';
 
 // Context providers
 import { AuthProvider } from './hooks/context/AuthContext';
@@ -56,21 +55,10 @@ import { ThemeProvider } from './hooks/context/ThemeContext';
 import { PreviewProvider } from './pages/conversation/Preview/context/PreviewContext';
 
 // Arco Design
-import { ConfigProvider, Modal, Typography } from '@arco-design/web-react';
+import { Modal, Typography } from '@arco-design/web-react';
 // Configure Arco Design to use React 18's createRoot, fixing Message component's CopyReactDOM.render error
 import '@arco-design/web-react/es/_util/react-19-adapter';
 import '@arco-design/web-react/dist/css/arco.css';
-import enUS from '@arco-design/web-react/es/locale/en-US';
-import jaJP from '@arco-design/web-react/es/locale/ja-JP';
-import zhCN from '@arco-design/web-react/es/locale/zh-CN';
-import zhTW from '@arco-design/web-react/es/locale/zh-TW';
-import koKR from '@arco-design/web-react/es/locale/ko-KR';
-import trTR from '@arco-design/web-react/es/locale/tr-TR';
-import ruRU from '@arco-design/web-react/es/locale/ru-RU';
-import ptBR from '@arco-design/web-react/es/locale/pt-BR';
-import deDE from '@arco-design/web-react/es/locale/de-DE';
-import esES from '@arco-design/web-react/es/locale/es-ES';
-import frFR from '@arco-design/web-react/es/locale/fr-FR';
 import { useTranslation } from 'react-i18next';
 
 // Styles
@@ -88,11 +76,9 @@ configService.initialize().catch((err) => {
 });
 
 // i18n
-import './services/i18n';
-import { isRtlLanguage } from './services/i18n/direction';
-import { registerPwa } from './services/registerPwa';
+import { i18nReady } from './services/i18n';
+import { registerPwa } from './services/web/registerPwa';
 
-import { ipcBridge } from '@/common';
 import { repairAllCronJobTimeZonesOnce } from '@renderer/pages/cron/repairCronJobTimeZone';
 import { bootstrapRendererConfig } from '@renderer/services/bootstrapRenderer';
 
@@ -102,190 +88,20 @@ import BackendStartupGate from './components/layout/BackendStartupGate';
 import GpuAutoDisableNotice from './components/layout/GpuAutoDisableNotice';
 import Layout from './components/layout/Layout';
 import Router from './components/layout/Router';
+import Config from './components/layout/startup/RendererConfig';
+import RuntimeFailureDialogs from './components/layout/startup/RuntimeFailureDialogs';
+import { useCrossSessionRateLimitNotice } from './hooks/system/useCrossSessionRateLimitNotice';
 import Sider from './components/layout/Sider';
 import { useAuth } from './hooks/context/AuthContext';
 import { ConversationHistoryProvider } from './hooks/context/ConversationHistoryContext';
 import HOC from './utils/ui/HOC';
 import type { BackendStartupFailureInfo } from '@/common/types/platform/electron';
-import type { IRuntimeStatusEvent, RuntimeFailureKind } from '@/common/adapter/ipcBridge';
 import {
   InstallationIntegrityContent,
   InstallationIntegrityModalHost,
-  type InstallationIntegrityDiagnostics,
   getBackendStartupInstallationDescription,
   getDownloadLatestModalActionProps,
-  getRuntimeComponentInstallationDescription,
-  showInstallationIntegrityModal,
-} from './components/layout/InstallationIntegrityDialog';
-import { createRuntimeInstallationReconciler } from './services/runtime/runtimeInstallationReconciler';
-
-// Arco ships several locales that predate its newer components: sections such
-// as Form, ColorPicker and the Calendar month/year formats are missing there.
-// Backfill anything absent from the English locale so every entry satisfies the
-// full locale shape (generalises the previous hand-written ko-KR patch).
-type ArcoLocaleInput = Omit<Partial<typeof enUS>, 'Calendar' | 'DatePicker'> & {
-  Calendar?: Partial<(typeof enUS)['Calendar']>;
-  DatePicker?: Omit<Partial<(typeof enUS)['DatePicker']>, 'Calendar'> & {
-    Calendar?: Partial<(typeof enUS)['DatePicker']['Calendar']>;
-  };
-};
-
-const completeArcoLocale = (locale: ArcoLocaleInput): typeof enUS => ({
-  ...enUS,
-  ...locale,
-  Calendar: {
-    ...enUS.Calendar,
-    ...locale.Calendar,
-    monthFormat: locale.Calendar?.monthFormat ?? enUS.Calendar.monthFormat,
-    yearFormat: locale.Calendar?.yearFormat ?? enUS.Calendar.yearFormat,
-  },
-  DatePicker: {
-    ...enUS.DatePicker,
-    ...locale.DatePicker,
-    Calendar: {
-      ...enUS.DatePicker.Calendar,
-      ...locale.DatePicker?.Calendar,
-      monthFormat: locale.DatePicker?.Calendar?.monthFormat ?? enUS.Calendar.monthFormat,
-      yearFormat: locale.DatePicker?.Calendar?.yearFormat ?? enUS.Calendar.yearFormat,
-    },
-  },
-  Form: locale.Form ?? enUS.Form,
-  ColorPicker: locale.ColorPicker ?? enUS.ColorPicker,
-});
-
-// Every language AionUi ships that Arco publishes a locale for. Arco has no
-// uk-UA or fa-IR locale; those fall back to English component strings.
-const arcoLocales: Record<string, typeof enUS> = {
-  'zh-CN': zhCN,
-  'zh-TW': zhTW,
-  'ja-JP': jaJP,
-  'ko-KR': completeArcoLocale(koKR),
-  'en-US': enUS,
-  'tr-TR': completeArcoLocale(trTR),
-  'ru-RU': completeArcoLocale(ruRU),
-  'pt-BR': completeArcoLocale(ptBR),
-  'de-DE': completeArcoLocale(deDE),
-  'es-ES': completeArcoLocale(esES),
-  'fr-FR': completeArcoLocale(frFR),
-};
-
-const INSTALLATION_INTEGRITY_FAILURES = new Set<RuntimeFailureKind>([
-  'bundled_resource_missing',
-  'bundled_resource_invalid',
-  'validation_failed',
-]);
-
-function isInstallationIntegrityFailure(kind: RuntimeFailureKind | undefined): boolean {
-  return INSTALLATION_INTEGRITY_FAILURES.has(kind ?? 'unknown');
-}
-
-function captureRuntimeInstallationIntegrityFailure(event: IRuntimeStatusEvent): void {
-  if (!isInstallationIntegrityFailure(event.failure_kind)) {
-    return;
-  }
-
-  void import('@sentry/electron/renderer')
-    .then((Sentry) => {
-      Sentry.withScope((scope) => {
-        scope.setTag('aionui.installation_integrity', event.failure_kind ?? 'unknown');
-        scope.setTag('aionui.runtime_resource', event.resource);
-        scope.setTag('aionui.runtime_resource_id', event.resource_id ?? '');
-        scope.setTag('aionui.runtime_scope', event.scope.kind);
-        Sentry.captureMessage('runtime-installation-integrity-failure', 'error');
-      });
-    })
-    .catch(() => {});
-}
-
-function buildRuntimeInstallationDiagnostics(
-  event: IRuntimeStatusEvent,
-  description: string
-): InstallationIntegrityDiagnostics {
-  return {
-    source: 'runtime_status',
-    description,
-    runtime: {
-      failureKind: event.failure_kind,
-      message: event.message,
-      phase: event.phase,
-      resource: event.resource,
-      resourceId: event.resource_id,
-      scopeId: event.scope.id,
-      scopeKind: event.scope.kind,
-    },
-  };
-}
-
-function resolveRuntimeResourceLabel(event: IRuntimeStatusEvent, t: TFunction): string {
-  if (event.resource === 'node') {
-    return t('settings.runtimeResource.node');
-  }
-  if (event.resource_id === 'codex-acp') {
-    return t('settings.runtimeResource.codexAcp');
-  }
-  if (event.resource_id === 'claude-agent-acp') {
-    return t('settings.runtimeResource.claudeAgentAcp');
-  }
-  return t('settings.runtimeResource.acpTool');
-}
-
-const RuntimeFailureDialogs: React.FC = () => {
-  const { t } = useTranslation();
-  const [modal, modalContextHolder] = Modal.useModal();
-
-  useEffect(() => {
-    const reconciler = createRuntimeInstallationReconciler({
-      showDialog: (event) => {
-        const resource = resolveRuntimeResourceLabel(event, t);
-        const description = getRuntimeComponentInstallationDescription(t, resource);
-        const controller = showInstallationIntegrityModal(
-          modal,
-          t,
-          description,
-          buildRuntimeInstallationDiagnostics(event, description)
-        );
-        return { close: () => controller.close() };
-      },
-      report: (event) => captureRuntimeInstallationIntegrityFailure(event),
-    });
-
-    const offStatus = ipcBridge.runtime.statusChanged.on((event: IRuntimeStatusEvent) => {
-      // Reconcile install-integrity failures and node ready events (spec 8/13.4).
-      if (
-        (event.phase === 'failed' && isInstallationIntegrityFailure(event.failure_kind)) ||
-        (event.phase === 'ready' && event.resource === 'node')
-      ) {
-        reconciler.handleStatus(event);
-        return;
-      }
-
-      // Non-integrity failures keep the existing generic error modal (unchanged).
-      if (event.phase !== 'failed') {
-        return;
-      }
-      const resource = resolveRuntimeResourceLabel(event, t);
-      modal.error({
-        title: t('common.error'),
-        content: <InstallationIntegrityContent description={t('settings.runtimeStatus.failedUnknown', { resource })} />,
-        okText: t('common.confirm'),
-        closable: false,
-        maskClosable: false,
-      });
-    });
-
-    const onBeforeUnload = () => reconciler.flushPending();
-    window.addEventListener('beforeunload', onBeforeUnload);
-
-    return () => {
-      window.removeEventListener('beforeunload', onBeforeUnload);
-      offStatus();
-      reconciler.flushPending();
-      reconciler.dispose();
-    };
-  }, [modal, t]);
-
-  return <>{modalContextHolder}</>;
-};
+} from './components/layout/startup/InstallationIntegrityDialog';
 
 // Global SWR default: do NOT revalidate every query on window focus. Focus
 // refetch (SWR's default) made the app re-hit /api/assistants, /api/skills,
@@ -326,16 +142,13 @@ const AppProviders: React.FC<PropsWithChildren> = ({ children }) =>
     )
   );
 
-const Config: React.FC<PropsWithChildren> = ({ children }) => {
-  const {
-    i18n: { language },
-  } = useTranslation();
-  const arcoLocale = arcoLocales[language] ?? enUS;
-
-  return React.createElement(
-    ConfigProvider,
-    { theme: { primaryColor: '#4E5969' }, locale: arcoLocale, rtl: isRtlLanguage(language) },
-    children
+const AuthenticatedLayout = () => {
+  const { user } = useAuth();
+  useCrossSessionRateLimitNotice(user?.id);
+  return (
+    <ConversationHistoryProvider>
+      <Layout sider={<Sider />} />
+    </ConversationHistoryProvider>
   );
 };
 
@@ -357,15 +170,7 @@ const Main = () => {
     return null;
   }
 
-  return (
-    <Router
-      layout={
-        <ConversationHistoryProvider>
-          <Layout sider={<Sider />} />
-        </ConversationHistoryProvider>
-      }
-    />
-  );
+  return <Router layout={<AuthenticatedLayout />} />;
 };
 
 const App = HOC.Wrapper(Config)(Main);
@@ -489,22 +294,24 @@ const BackendStartupFailureDialog: React.FC<{ failure: BackendStartupFailureInfo
 void registerPwa();
 
 const root = createRoot(document.getElementById('root')!);
-root.render(
-  <BackendStartupGate
-    renderStarting={() => (
-      <Config>
-        <BackendStartingView />
-      </Config>
-    )}
-    renderFailure={(failure) => (
-      <Config>
-        <BackendStartupFailureDialog failure={failure} />
-      </Config>
-    )}
-    renderApp={() => (
-      <AppProviders>
-        <App />
-      </AppProviders>
-    )}
-  />
+void i18nReady.then(() =>
+  root.render(
+    <BackendStartupGate
+      renderStarting={() => (
+        <Config>
+          <BackendStartingView />
+        </Config>
+      )}
+      renderFailure={(failure) => (
+        <Config>
+          <BackendStartupFailureDialog failure={failure} />
+        </Config>
+      )}
+      renderApp={() => (
+        <AppProviders>
+          <App />
+        </AppProviders>
+      )}
+    />
+  )
 );

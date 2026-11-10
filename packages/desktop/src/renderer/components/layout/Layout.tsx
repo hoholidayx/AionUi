@@ -14,9 +14,7 @@ import React, { Suspense, useCallback, useEffect, useRef, useState } from 'react
 import { useTranslation } from 'react-i18next';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { setGlobalNavigate } from '@/renderer/utils/navigation';
-import { usePreviewContext } from '@renderer/pages/conversation/Preview';
-import { ProjectPanelHost } from '@renderer/components/layout/ProjectPanelHost';
-import { ProjectPanelMobileOverlay } from '@renderer/components/layout/ProjectPanelMobileOverlay';
+import { usePreviewContext } from '@renderer/pages/conversation/Preview/context/PreviewContext';
 import { setCurrentProject, useCurrentProject } from '@renderer/pages/conversation/explorer/currentProjectStore';
 import { setCurrentConversation } from '@renderer/pages/conversation/explorer/currentConversationStore';
 import { useContainerWidth } from '@renderer/pages/conversation/hooks/useContainerWidth';
@@ -26,7 +24,6 @@ import { useProjectPreviewRegionWidth } from '@renderer/hooks/ui/useProjectPrevi
 import { useProjectPanelCollapse } from '@renderer/hooks/ui/useProjectPanelCollapse';
 import { dispatchWorkspaceToggleEvent } from '@renderer/utils/workspace/workspaceEvents';
 import { MIN_PREVIEW_PANEL_PX } from '@renderer/pages/conversation/utils/layoutCalc';
-import { PreviewPanel } from '@renderer/pages/conversation/Preview';
 import { LayoutContext } from '@renderer/hooks/context/LayoutContext';
 import { NavigationHistoryProvider } from '@renderer/hooks/context/NavigationHistoryContext';
 import { useDeepLink } from '@renderer/hooks/system/useDeepLink';
@@ -89,6 +86,15 @@ const useDebug = () => {
   return { onClick };
 };
 
+const ProjectPanelHost = React.lazy(() =>
+  import('./ProjectPanelHost').then((module) => ({ default: module.ProjectPanelHost }))
+);
+const ProjectPanelMobileOverlay = React.lazy(() =>
+  import('./ProjectPanelMobileOverlay').then((module) => ({ default: module.ProjectPanelMobileOverlay }))
+);
+const PreviewPanel = React.lazy(
+  () => import('@renderer/pages/conversation/Preview/components/PreviewPanel/PreviewPanel')
+);
 const UpdateModal = React.lazy(() => import('@/renderer/components/settings/UpdateModal'));
 
 const DEFAULT_SIDER_WIDTH = 260;
@@ -549,30 +555,36 @@ const Layout: React.FC<{
                       lineStyle: { width: '2px' },
                     })}
                   <div className='h-full w-full overflow-hidden'>
-                    <PreviewPanel />
+                    <Suspense fallback={null}>
+                      <PreviewPanel />
+                    </Suspense>
                   </div>
                 </div>
               )}
-              {!isMobile && (
-                <ProjectPanelHost
-                  widthPx={explorerWidthPx}
-                  collapsed={explorerCollapsed}
-                  dragHandle={createExplorerDragHandle({
-                    className: 'absolute start-0 top-0 bottom-0 z-20',
-                    reverse: true,
-                  })}
-                />
+              {!isMobile && currentProject && (
+                <Suspense fallback={null}>
+                  <ProjectPanelHost
+                    widthPx={explorerWidthPx}
+                    collapsed={explorerCollapsed}
+                    dragHandle={createExplorerDragHandle({
+                      className: 'absolute start-0 top-0 bottom-0 z-20',
+                      reverse: true,
+                    })}
+                  />
+                </Suspense>
               )}
             </div>
 
             {/* Mobile overlay: backdrop + fixed panel + floating collapse handle. */}
             {isMobile && Boolean(currentProject) && (
-              <ProjectPanelMobileOverlay
-                projectId={currentProject as string}
-                collapsed={explorerCollapsed}
-                onCollapse={toggleExplorer}
-                widthPx={explorerMobileWidthPx}
-              />
+              <Suspense fallback={null}>
+                <ProjectPanelMobileOverlay
+                  projectId={currentProject as string}
+                  collapsed={explorerCollapsed}
+                  onCollapse={toggleExplorer}
+                  widthPx={explorerMobileWidthPx}
+                />
+              </Suspense>
             )}
           </ArcoLayout>
         </div>

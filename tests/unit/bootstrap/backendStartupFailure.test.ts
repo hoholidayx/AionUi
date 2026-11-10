@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { classifyBackendStartupFailure } from '@/process/startup/backendStartupFailure';
 import { detectStartupArchitectureMismatch } from '@/process/startup/architectureCompatibility';
-import { getInstallationIntegrityModalActions } from '@/renderer/components/layout/InstallationIntegrityDialog';
+import { getInstallationIntegrityModalActions } from '@/renderer/components/layout/startup/InstallationIntegrityDialog';
 
 describe('classifyBackendStartupFailure', () => {
   it('classifies missing GLIBC symbols as an incompatible backend runtime', () => {
