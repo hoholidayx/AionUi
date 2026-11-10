@@ -81,6 +81,8 @@ See the `testing` skill (`.claude/skills/testing/SKILL.md`) for complete workflo
 
 ## Workflow
 
+- `bun run build` and `just build` build the standalone Web renderer in `out/web-renderer`. Keep Electron preflight, native rebuilds, and desktop packaging on the explicit desktop commands.
+
 ### Scope & Enforcement
 
 - **Hard blockers**: process boundary violations, TypeScript errors, failing tests, unsafe IPC usage, missing i18n for new or changed user-facing text, and raw interactive HTML in new UI.

@@ -93,7 +93,7 @@ From the AionUi repository, build the linked backend.
 For a source WebUI run, set `AIONUI_BACKEND_BIN` to the resulting `target/release/aioncore`. To build the Web renderer and package it, run these commands from AionUi.
 
 ```bash
-bun run build:web
+bun run build
 bundle_stage=$(mktemp -d)
 bundle_dir="$bundle_stage/bundle"
 mkdir "$bundle_dir"
@@ -197,20 +197,17 @@ Use the Rust MSVC toolchain and install Microsoft C++ Build Tools. After install
 | `bun run build-win:arm64` | Build Windows distributable for ARM64                   |
 | `bun run build-win:x64`   | Build Windows distributable for x64                     |
 | `bun run build-deb`       | Build Linux (.deb) distributable                        |
-| `bun run build`           | Alias for `bun run build-mac`                           |
 
-### Standalone Server (non-Electron)
+### Standalone Web
 
-| Command                            | Description                                                 |
-| ---------------------------------- | ----------------------------------------------------------- |
-| `bun run build:web`                 | Build renderer for standalone web deployment                |
-| `bun run build:server`             | Build standalone server bundle to `dist-server/`            |
-| `bun run server:start`             | Run standalone server in development mode                   |
-| `bun run server:start:remote`      | Run standalone server with remote access                    |
-| `bun run server:start:prod`        | Run standalone server in production mode                    |
-| `bun run server:start:prod:remote` | Run standalone server in production mode with remote access |
-| `bun run server:resetpass`         | Reset password via standalone server CLI                    |
-| `bun run server:resetpass:prod`    | Reset password via standalone server CLI (production)       |
+For a Web-only checkout, install with `bun install --frozen-lockfile --ignore-scripts` to skip desktop install hooks.
+
+| Command                         | Description                                                                   |
+| ------------------------------- | ----------------------------------------------------------------------------- |
+| `bun run build` or `just build` | Build the Web renderer in `out/web-renderer` with compression and size checks |
+| `bun run build:web`             | Explicit Web renderer build                                                   |
+| `node scripts/pack-web-cli.js`  | Package the completed Web renderer and AionCore as a standalone Web CLI       |
+| `bun run webui:prod`            | Build and start WebUI in production mode                                      |
 
 ### Code Quality
 

@@ -18,8 +18,13 @@ const normalizedPlatform = platformMap[platform] || platform;
 const normalizedArch = archMap[arch] || arch;
 
 const tarballName = `aionui-web-${version}-${normalizedPlatform}-${normalizedArch}.tar.gz`;
+const rendererOutDir = path.join(projectRoot, 'out/web-renderer');
 const distDir = path.join(projectRoot, 'dist-web-cli');
 const tarballPath = path.join(distDir, tarballName);
+
+if (!['index.html', '.vite/web-build-ready'].every((file) => fs.existsSync(path.join(rendererOutDir, file)))) {
+  throw new Error(`Web renderer build is incomplete at ${rendererOutDir}. Run bun run build first.`);
+}
 
 console.log(`Packing web-cli for ${platform}-${arch}...`);
 
@@ -68,13 +73,11 @@ fs.writeFileSync(path.join(tarballContentDir, 'package.json'), JSON.stringify(sr
 
 // 6. Copy the standalone Web build and its precompressed assets.
 console.log('6. Copying static files...');
-const rendererOutDir = path.join(projectRoot, 'out/web-renderer');
 const staticDest = path.join(tarballContentDir, 'static');
-if (fs.existsSync(rendererOutDir)) {
-  fs.cpSync(rendererOutDir, staticDest, { recursive: true });
-} else {
-  throw new Error(`Web renderer output not found at ${rendererOutDir}. Run bun run build:web first.`);
-}
+fs.cpSync(rendererOutDir, staticDest, {
+  recursive: true,
+  filter: (source) => source !== path.join(rendererOutDir, '.vite'),
+});
 
 // 7. Copy bundled-aioncore
 const backendSrc = path.join(projectRoot, 'resources/bundled-aioncore', `${platform}-${arch}`);

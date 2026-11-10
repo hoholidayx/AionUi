@@ -4,6 +4,7 @@ const { promisify } = require('node:util');
 const zlib = require('node:zlib');
 
 const outDir = path.resolve(__dirname, '../../out/web-renderer');
+const readyMarker = path.join(outDir, '.vite', 'web-build-ready');
 const gzip = promisify(zlib.gzip);
 const brotli = promisify(zlib.brotliCompress);
 const budgetByRoute = [
@@ -17,6 +18,7 @@ const budgetByRoute = [
 ];
 
 async function prepareAssets() {
+  await fs.rm(readyMarker, { force: true });
   const manifest = JSON.parse(await fs.readFile(path.join(outDir, '.vite/manifest.json'), 'utf8'));
   const sizes = new Map();
 
@@ -71,6 +73,7 @@ async function prepareAssets() {
       }
     }
   }
+  await fs.writeFile(readyMarker, '');
 }
 
 prepareAssets().catch((error) => {

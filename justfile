@@ -172,10 +172,8 @@ verify-native:
 # Build (mirrors CI workflow environment setup)
 # ============================================================
 
-# Build for current platform (preflight → build)
-build: preflight
-    #!/usr/bin/env bash
-    export NODE_OPTIONS="--max-old-space-size=8192"
+# Build the standalone Web renderer and check its asset budgets
+build:
     bun run build
 
 # Quick build - uses cached Vite output if available
@@ -453,7 +451,7 @@ list-artifacts:
     if [ -d "out" ]; then
         find out -type f \( -name "*.exe" -o -name "*.msi" -o -name "*.dmg" -o -name "*.deb" -o -name "*.AppImage" -o -name "*.zip" \) -exec ls -lh {} \; | awk '{print "  " $NF "  (" $5 ")"}'
     else
-        echo "No build output found. Run: just build"
+        echo "No desktop artifacts found. Run: just build-mac, just build-win, or just build-linux"
     fi
 
 # CI-like full build validation (mirrors GitHub Actions workflow)
