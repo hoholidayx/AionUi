@@ -35,6 +35,8 @@ const MERMAID_ZOOM_STEP = 0.25;
 // overlay) instead of a pan, when drag-to-pan is enabled.
 const PAN_CLICK_THRESHOLD = 4;
 
+const DEFAULT_TRANSFORM = { scale: 1, x: 0, y: 0 };
+
 let initializedTheme: 'light' | 'dark' | null = null;
 const ensureMermaidInitialized = (theme: 'light' | 'dark') => {
   if (initializedTheme === theme) return;
@@ -62,7 +64,7 @@ function MermaidBlock({ code, style, showOpenInPanelButton = true, enablePanZoom
   });
 
   // Pan/zoom transform for the rendered diagram (only used when enablePanZoom).
-  const [transform, setTransform] = useState({ scale: 1, x: 0, y: 0 });
+  const [transform, setTransform] = useState(DEFAULT_TRANSFORM);
   const [isZoomOpen, setIsZoomOpen] = useState(false);
   const dragRef = useRef<{
     pointerId: number;
@@ -74,20 +76,12 @@ function MermaidBlock({ code, style, showOpenInPanelButton = true, enablePanZoom
   } | null>(null);
   const [isPanning, setIsPanning] = useState(false);
 
-  // Reset the view whenever a fresh diagram renders so a re-render never leaves the
-  // user staring at an off-screen, zoomed-in fragment of the previous diagram.
-  // A re-render also replaces the overlay content, so close it as well.
-  useEffect(() => {
-    setTransform({ scale: 1, x: 0, y: 0 });
-    setIsZoomOpen(false);
-  }, [svg]);
-
   const zoomBy = (delta: number) =>
     setTransform((prev) => ({
       ...prev,
       scale: Math.min(MAX_MERMAID_SCALE, Math.max(MIN_MERMAID_SCALE, Math.round((prev.scale + delta) * 100) / 100)),
     }));
-  const resetTransform = () => setTransform({ scale: 1, x: 0, y: 0 });
+  const resetTransform = () => setTransform(DEFAULT_TRANSFORM);
 
   const handlePanPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
     if (event.button !== 0) return;
@@ -159,8 +153,13 @@ function MermaidBlock({ code, style, showOpenInPanelButton = true, enablePanZoom
     let cancelled = false;
     const source = debouncedCode.trim();
 
+    // Reset with the old diagram's removal so the new controls are interactive
+    // as soon as the async SVG is committed.
+    setSvg(null);
+    setTransform(DEFAULT_TRANSFORM);
+    setIsZoomOpen(false);
+
     if (!source) {
-      setSvg(null);
       setIsRendering(false);
       setViewMode('source');
       return () => {
@@ -168,7 +167,6 @@ function MermaidBlock({ code, style, showOpenInPanelButton = true, enablePanZoom
       };
     }
 
-    setSvg(null);
     setIsRendering(true);
 
     const renderDiagram = async () => {
