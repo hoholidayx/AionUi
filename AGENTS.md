@@ -49,6 +49,8 @@ Formatting rules (Oxfmt, Prettier-compatible):
 
 New or changed user-facing text must use i18n keys; do not introduce hardcoded strings. Languages and modules are defined in `packages/desktop/src/common/config/i18n-config.json`; the translation files live in `packages/desktop/src/renderer/services/i18n/locales/`.
 
+Search existing keys before adding translations. Reuse a key when its meaning, interpolation parameters, and consequences match in both contexts. Add keys only for new wording or behavior.
+
 See the `i18n` skill (`.claude/skills/i18n/SKILL.md`) for complete workflow, key naming, and validation steps.
 
 ## Architecture
@@ -62,6 +64,9 @@ Two process types — never mix their APIs:
 
 Cross-process communication must go through the IPC bridge (`packages/desktop/src/preload/`).
 See [docs/architecture/overview.md](docs/architecture/overview.md) for details.
+
+- Reuse existing dialogs, request adapters, and completion callbacks when adding an entry point. Use the shared bridge contract as the source of response types. Keep entry-point differences in the caller.
+- Keep eligibility for destructive actions in the backend. When adding an opt-in action, preserve the default and test that a failed opt-in request keeps the user's selection and can be retried through the same action.
 
 ## Testing
 
