@@ -6,7 +6,6 @@
 
 import { isCodexImageToolCall, type IMessageToolCall } from '@/common/chat/chatLib';
 import { normalizeToolCall } from '@/common/chat/normalizeToolCall';
-import type { NormalizedToolStatus } from '@/common/chat/normalizeToolCall';
 import FileChangesPanel from '@/renderer/components/base/FileChangesPanel';
 import { useDiffPreviewHandlers } from '@/renderer/hooks/file/useDiffPreviewHandlers';
 import { parseDiff } from '@/renderer/utils/file/diffUtils';
@@ -15,22 +14,9 @@ import { IconDown, IconRight } from '@arco-design/web-react/icon';
 import { createTwoFilesPatch } from 'diff';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { BadgeProps } from '@arco-design/web-react';
+import { TOOL_BADGE_STATUS } from './constants';
 import ToolImagePreview from './ToolImagePreview';
 import styles from './ToolCards.module.css';
-
-const statusToBadge = (status: NormalizedToolStatus): BadgeProps['status'] => {
-  switch (status) {
-    case 'completed':
-      return 'success';
-    case 'error':
-      return 'error';
-    case 'running':
-      return 'processing';
-    default:
-      return 'default';
-  }
-};
 
 const ReplacePreview: React.FC<{ message: IMessageToolCall }> = ({ message }) => {
   const file_path = message.content.args?.file_path || message.content.input?.file_path || '';
@@ -75,16 +61,16 @@ const MessageToolCall: React.FC<{ message: IMessageToolCall }> = ({ message }) =
 
   return (
     <div className='flex flex-col'>
-      <div className='flex flex-row color-#86909C gap-12px items-center'>
+      <div className='flex flex-row text-3 gap-12px items-center'>
         <Badge
-          status={statusToBadge(normalized.status)}
+          status={TOOL_BADGE_STATUS[normalized.status]}
           className={normalized.status === 'running' ? styles.badgeBreathing : undefined}
         />
         <span
           className={
             'flex-1 min-w-0' +
             (expanded ? ' break-all' : ' truncate') +
-            (hasDetail ? ' cursor-pointer hover:color-#4E5969' : '')
+            (hasDetail ? ' cursor-pointer hover:text-2' : '')
           }
           onClick={hasDetail ? () => setExpanded(!expanded) : undefined}
         >
@@ -93,7 +79,7 @@ const MessageToolCall: React.FC<{ message: IMessageToolCall }> = ({ message }) =
         </span>
         {hasDetail && (
           <span
-            className='flex-shrink-0 cursor-pointer hover:color-#4E5969 transition-colors'
+            className='flex-shrink-0 cursor-pointer hover:text-2 transition-colors'
             onClick={() => setExpanded(!expanded)}
           >
             {expanded ? <IconDown style={{ fontSize: 12 }} /> : <IconRight style={{ fontSize: 12 }} />}

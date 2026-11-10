@@ -1,29 +1,13 @@
-import type { BadgeProps } from '@arco-design/web-react';
 import { Badge, Spin } from '@arco-design/web-react';
 import { IconDown, IconRight } from '@arco-design/web-react/icon';
 import { Checklist, Right } from '@icon-park/react';
 import React, { useEffect, useMemo, useState } from 'react';
 import { ipcBridge } from '@/common';
-import type { NormalizedToolCall, NormalizedToolStatus, ToolMessage } from '@/common/chat/normalizeToolCall';
+import type { NormalizedToolCall, ToolMessage } from '@/common/chat/normalizeToolCall';
 import { normalizeToolMessages, hasRunningToolMessages } from '@/common/chat/normalizeToolCall';
+import { TOOL_BADGE_STATUS } from './constants';
 import ToolImagePreview from './ToolImagePreview';
 import styles from './ToolCards.module.css';
-
-const statusToBadge = (status: NormalizedToolStatus): BadgeProps['status'] => {
-  switch (status) {
-    case 'completed':
-      return 'success';
-    case 'error':
-      return 'error';
-    case 'running':
-      return 'processing';
-    case 'canceled':
-      return 'default';
-    case 'pending':
-    default:
-      return 'default';
-  }
-};
 
 const ToolItemDetail: React.FC<{ item: NormalizedToolCall }> = ({ item }) => {
   const [expanded, setExpanded] = useState(false);
@@ -59,16 +43,16 @@ const ToolItemDetail: React.FC<{ item: NormalizedToolCall }> = ({ item }) => {
 
   return (
     <div className='flex flex-col'>
-      <div className='flex flex-row color-#86909C gap-12px items-center'>
+      <div className='flex flex-row text-3 gap-12px items-center'>
         <Badge
-          status={statusToBadge(item.status)}
+          status={TOOL_BADGE_STATUS[item.status]}
           className={item.status === 'running' ? styles.badgeBreathing : undefined}
         />
         <span
           className={
             'flex-1 min-w-0' +
             (expanded ? ' break-all' : ' truncate') +
-            (hasDetail ? ' cursor-pointer hover:color-#4E5969' : '')
+            (hasDetail ? ' cursor-pointer hover:text-2' : '')
           }
           onClick={hasDetail ? toggleExpanded : undefined}
         >
@@ -78,7 +62,7 @@ const ToolItemDetail: React.FC<{ item: NormalizedToolCall }> = ({ item }) => {
           )}
         </span>
         {hasDetail && (
-          <span className='flex-shrink-0 cursor-pointer hover:color-#4E5969 transition-colors' onClick={toggleExpanded}>
+          <span className='flex-shrink-0 cursor-pointer hover:text-2 transition-colors' onClick={toggleExpanded}>
             {expanded ? <IconDown style={{ fontSize: 12 }} /> : <IconRight style={{ fontSize: 12 }} />}
           </span>
         )}

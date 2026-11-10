@@ -4,6 +4,17 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import type { NormalizedToolStatus } from '@/common/chat/normalizeToolCall';
+import type { BadgeProps } from '@arco-design/web-react';
+
+export const TOOL_BADGE_STATUS = {
+  pending: 'default',
+  running: 'processing',
+  completed: 'success',
+  error: 'error',
+  canceled: 'default',
+} as const satisfies Record<NormalizedToolStatus, BadgeProps['status']>;
+
 /**
  * Alert and message display constants
  * Alert 和消息展示常量
