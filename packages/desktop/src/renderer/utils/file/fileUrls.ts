@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { getBaseUrl } from '@/common/adapter/httpBridge';
+import { getBaseUrl, httpGetBlob } from '@/common/adapter/httpBridge';
 import type { ChatFileRef } from '@/common/types/chatFile';
 
 /** Build the raw-byte stream URL for a renderer-safe file reference. */
@@ -18,3 +18,9 @@ export const buildFileStreamUrl = (ref: ChatFileRef): string => {
   }
   return `${getBaseUrl()}/api/fs/stream?${params.toString()}`;
 };
+
+/** Fetch a Dots attachment through the authenticated conversation API. */
+export const fetchDotsAttachment = (conversationId: string, artifactId: string): Promise<Blob> =>
+  httpGetBlob(
+    `/api/conversations/${encodeURIComponent(conversationId)}/dots-attachments/${encodeURIComponent(artifactId)}`
+  );

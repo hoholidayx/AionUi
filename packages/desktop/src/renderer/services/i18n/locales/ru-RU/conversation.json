@@ -1,4 +1,16 @@
 {
+  "dots": {
+    "defaultConversation": "Диалог Dots по умолчанию",
+    "push": "Уведомление Dots",
+    "progress": "Ход выполнения в Dots",
+    "cancelled": "Dot отменил запрос.",
+    "noSubscription": "Подписка Dot неактивна.",
+    "replyExpired": "Время ожидания ответа Dot истекло.",
+    "deliveryFailed": "Не удалось доставить запрос через Dots.",
+    "attachmentUnavailable": "Вложение недоступно",
+    "offline": "Не удалось подключиться к Dots Bridge.",
+    "disabled": "Dots отключён."
+  },
   "welcome": {
     "title": "Привет! Каковы ваши планы на сегодня?",
     "placeholder": "Отправьте сообщение, загрузите файлы, откройте папку, создайте запланированную задачу или введите / для команд...",

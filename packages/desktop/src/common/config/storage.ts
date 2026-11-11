@@ -245,6 +245,8 @@ export type TChatConversation =
           workspace?: string;
           backend: string;
           cli_path?: string;
+          dots_default?: boolean;
+          dots_connection?: 'checking' | 'online' | 'offline' | 'no_subscription' | 'disabled';
           custom_workspace?: boolean;
           agent_name?: string;
           custom_agent_id?: string; // UUID for identifying specific custom agent

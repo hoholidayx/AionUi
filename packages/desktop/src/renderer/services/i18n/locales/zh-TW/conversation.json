@@ -1,4 +1,16 @@
 {
+  "dots": {
+    "defaultConversation": "Dots 預設對話",
+    "push": "Dots 主動推送",
+    "progress": "Dots 進度",
+    "cancelled": "Dot 已取消此請求。",
+    "noSubscription": "Dot 的訂閱已失效。",
+    "replyExpired": "等待 Dot 回覆已逾時。",
+    "deliveryFailed": "Dots 未能送達此請求。",
+    "attachmentUnavailable": "附件無法使用",
+    "offline": "暫時無法連線至 Dots Bridge。",
+    "disabled": "Dots 後端已停用。"
+  },
   "welcome": {
     "title": "Hi，今天有什麼安排？",
     "placeholder": "發送訊息、上傳檔案、開啟資料夾、建立定時任務，或輸入 / 喚起命令...",

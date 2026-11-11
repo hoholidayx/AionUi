@@ -1,4 +1,16 @@
 {
+  "dots": {
+    "defaultConversation": "Conversation Dots par défaut",
+    "push": "Notification Dots",
+    "progress": "Progression de Dots",
+    "cancelled": "Dot a annulé la demande.",
+    "noSubscription": "L’abonnement à Dot est inactif.",
+    "replyExpired": "Le délai de réponse de Dot est dépassé.",
+    "deliveryFailed": "Dots n’a pas pu transmettre la demande.",
+    "attachmentUnavailable": "Pièce jointe indisponible",
+    "offline": "Impossible de joindre Dots Bridge.",
+    "disabled": "Dots est désactivé."
+  },
   "welcome": {
     "title": "Bonjour, quel est votre plan pour aujourd'hui ?",
     "placeholder": "Envoyez un message, téléversez des fichiers, ouvrez un dossier, créez une tâche planifiée ou tapez / pour les commandes...",

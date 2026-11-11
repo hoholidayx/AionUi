@@ -300,6 +300,26 @@ describe('normalizeAgentStreamError', () => {
 });
 
 describe('normalizeTextMessageContent', () => {
+  it('preserves an attachment-only Dots push in streamed and restored messages', () => {
+    const attachment = { artifact_id: 'art_example', filename: 'notes.zip', preview: false };
+    const live = normalizeTextMessageContent(
+      { content: '', dots_kind: 'push', dots_attachments: [attachment] },
+      { replace: true }
+    );
+    expect(normalizeTextMessageContent(JSON.stringify(live))).toEqual({
+      content: '',
+      dotsKind: 'push',
+      dotsAttachments: [attachment],
+      replace: true,
+    });
+  });
+
+  it('ignores malformed attachment records while preserving Dots text', () => {
+    expect(normalizeTextMessageContent({ content: 'reply', dots_attachments: [{ filename: 'a' }] })).toEqual({
+      content: 'reply',
+    });
+  });
+
   it('normalizes snake_case team metadata from an object payload', () => {
     expect(
       normalizeTextMessageContent({

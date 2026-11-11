@@ -262,6 +262,8 @@ const SendBox: React.FC<{
   slash_commands?: SlashCommandItem[];
   onSlashBuiltinCommand?: (name: string) => void;
   hasPendingAttachments?: boolean;
+  allowAttachmentOnly?: boolean;
+  hideStopAction?: boolean;
   enableBtw?: boolean;
   allowSendWhileLoading?: boolean;
   compactActions?: boolean;
@@ -323,6 +325,8 @@ const SendBox: React.FC<{
   slash_commands = [],
   onSlashBuiltinCommand,
   hasPendingAttachments = false,
+  allowAttachmentOnly = false,
+  hideStopAction = false,
   enableBtw = false,
   allowSendWhileLoading = false,
   compactActions = false,
@@ -1579,7 +1583,7 @@ const SendBox: React.FC<{
       message.warning(t('messages.conversationInProgress'));
       return;
     }
-    if (!input.trim() && domSnippets.length === 0) {
+    if (!input.trim() && domSnippets.length === 0 && !(allowAttachmentOnly && hasPendingAttachments)) {
       return;
     }
     console.info('[sendbox]', {
@@ -1665,7 +1669,8 @@ const SendBox: React.FC<{
   );
   const { handleLiveTranscript } = useLiveTranscriptInsertion(speechDispatch.dispatch);
 
-  const hasDraftToSend = input.trim().length > 0 || domSnippets.length > 0;
+  const hasDraftToSend =
+    input.trim().length > 0 || domSnippets.length > 0 || (allowAttachmentOnly && hasPendingAttachments);
 
   const addToDraftLabel = t('conversation.commandQueue.addToQueue', { defaultValue: 'Save to Draft box' });
   const sendNowLabel = t('conversation.commandQueue.sendNow', { defaultValue: 'Send now' });
@@ -1773,6 +1778,7 @@ const SendBox: React.FC<{
   );
 
   const renderActionButtons = () => {
+    if (hideStopAction) return primaryActionButton;
     if (allowSendWhileLoading && (isLoading || loading)) {
       // Keep a single action slot while processing: show stop when the draft is empty,
       // and only switch back to send once the user has prepared a queued message.

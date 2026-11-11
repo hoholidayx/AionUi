@@ -127,6 +127,7 @@ const GuidPage: React.FC = () => {
   });
 
   const guidInput = useGuidInput({
+    allowAllFiles: agentSelection.selectedAssistantBackend === 'dots',
     locationState: location.state as { workspace?: string } | null,
   });
   // The `/open` builtin + attach picker browse the backend machine's filesystem

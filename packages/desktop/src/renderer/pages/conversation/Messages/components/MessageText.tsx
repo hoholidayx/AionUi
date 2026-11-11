@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import type { IMessageText } from '@/common/chat/chatLib';
+import type { DotsMessageAttachment, IMessageText } from '@/common/chat/chatLib';
 import { parseFileMarker, resolveMessageFilePath } from './fileMarker';
 import SessionMentionAction from './SessionMentionAction';
 import { parseSessionMessageBlock, parseSessionsBlock } from './sessionMarkers';
@@ -12,10 +12,10 @@ import { useConversationContextSafe } from '@/renderer/hooks/context/Conversatio
 import { useLayoutContext } from '@/renderer/hooks/context/LayoutContext';
 import { useLocalFilePreview } from '@/renderer/pages/conversation/Preview/hooks/useLocalFilePreview';
 import { iconColors } from '@/renderer/styles/colors';
-import { Alert, Message, Tooltip } from '@arco-design/web-react';
-import { Copy } from '@icon-park/react';
+import { Alert, Button, Message, Tooltip } from '@arco-design/web-react';
+import { Copy, Download } from '@icon-park/react';
 import classNames from 'classnames';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { copyText } from '@/renderer/utils/ui/clipboard';
 import CollapsibleContent from '@renderer/components/chat/CollapsibleContent';
@@ -55,6 +55,61 @@ import MessageCronBadge from './MessageCronBadge';
 import { resolveAgentLogo, useAgentLogos } from '@/renderer/utils/model/agentLogo';
 import TeammateMessageAvatar from './TeammateMessageAvatar';
 import { useTeammateColor } from '@/renderer/pages/team/identity/TeamIdentityContext';
+
+import { downloadDotsAttachment } from '@/renderer/utils/file/download';
+import { fetchDotsAttachment } from '@/renderer/utils/file/fileUrls';
+
+const DotsAttachment: React.FC<{ conversationId: string; file: DotsMessageAttachment }> = ({
+  conversationId,
+  file,
+}) => {
+  const { t } = useTranslation();
+  const [preview, setPreview] = useState<string>();
+  const [unavailable, setUnavailable] = useState(false);
+  useEffect(() => {
+    if (!file.preview) return;
+    let cancelled = false;
+    let url: string | undefined;
+    void fetchDotsAttachment(conversationId, file.artifact_id).then(
+      (blob) => {
+        if (cancelled || !blob.type.startsWith('image/')) return;
+        url = URL.createObjectURL(blob);
+        setPreview(url);
+      },
+      () => {
+        if (!cancelled) setUnavailable(true);
+      }
+    );
+    return () => {
+      cancelled = true;
+      if (url) URL.revokeObjectURL(url);
+    };
+  }, [conversationId, file.artifact_id, file.preview]);
+
+  return (
+    <div className='min-w-0 flex flex-col items-start gap-4px'>
+      {preview && (
+        <img src={preview} alt={file.filename} loading='lazy' className='max-w-full max-h-360px rounded-8px' />
+      )}
+      <Button
+        type='secondary'
+        size='small'
+        icon={<Download size={14} />}
+        onClick={() => {
+          void downloadDotsAttachment(conversationId, file.artifact_id, file.filename).then(
+            () => setUnavailable(false),
+            () => setUnavailable(true)
+          );
+        }}
+      >
+        {file.filename}
+      </Button>
+      {unavailable && (
+        <span className='text-12px text-t-secondary'>{t('conversation.dots.attachmentUnavailable')}</span>
+      )}
+    </div>
+  );
+};
 
 const CODE_STYLE = { marginTop: 4, marginBlock: 4 };
 
@@ -154,6 +209,23 @@ const MessageText: React.FC<{
     () => (isTeammateMessage && senderName === 'team_system' ? parseTeamContextResetNotice(text) : null),
     [isTeammateMessage, senderName, text]
   );
+  const dotsKind = message.content.dotsKind;
+  const dotsBadge =
+    dotsKind === 'push'
+      ? t('conversation.dots.push')
+      : dotsKind === 'progress'
+        ? t('conversation.dots.progress')
+        : dotsKind === 'cancel' || dotsKind === 'cancelled'
+          ? t('conversation.dots.cancelled')
+          : undefined;
+  const dotsFailure =
+    dotsKind === 'no_subscription'
+      ? t('conversation.dots.noSubscription')
+      : dotsKind === 'reply_expired'
+        ? t('conversation.dots.replyExpired')
+        : dotsKind === 'request_missing' || dotsKind === 'delivery_failed'
+          ? t('conversation.dots.deliveryFailed')
+          : undefined;
   const renderedText = contextResetNotice
     ? t(
         contextResetNotice.runtime_status === 'ready'
@@ -291,6 +363,11 @@ const MessageText: React.FC<{
             ))}
           </div>
         )}
+        {dotsBadge && <span className='text-12px text-t-secondary mb-4px'>{dotsBadge}</span>}
+        {dotsFailure && <Alert type='warning' content={dotsFailure} />}
+        {message.content.dotsAttachments?.map((file) => (
+          <DotsAttachment key={file.artifact_id} conversationId={message.conversation_id} file={file} />
+        ))}
         {files.length > 0 && (
           <div className={classNames('mt-6px min-w-0 max-w-full', { 'self-end': isUserMessage })}>
             {resolvedFiles.length === 1 ? (

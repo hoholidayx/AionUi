@@ -73,7 +73,7 @@ export const useAcpInitialMessage = ({
         markSendStarted?.();
         setAiProcessing(true);
 
-        void checkAndUpdateTitle(conversation_id, input);
+        if (backend !== 'dots') void checkAndUpdateTitle(conversation_id, input);
         const result = await ipcBridge.acpConversation.sendMessage.invoke({
           input,
           conversation_id: conversation_id,

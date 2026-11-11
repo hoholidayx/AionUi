@@ -1,4 +1,16 @@
 {
+  "dots": {
+    "defaultConversation": "Dots 默认会话",
+    "push": "Dots 主动推送",
+    "progress": "Dots 进度",
+    "cancelled": "Dot 已取消此请求。",
+    "noSubscription": "Dot 的订阅已失效。",
+    "replyExpired": "等待 Dot 回复已超时。",
+    "deliveryFailed": "Dots 未能送达此请求。",
+    "attachmentUnavailable": "附件不可用",
+    "offline": "暂时无法连接 Dots Bridge。",
+    "disabled": "Dots 后端已停用。"
+  },
   "welcome": {
     "title": "Hi，今天有什么安排？",
     "placeholder": "发消息、上传文件、打开文件夹、创建定时任务，或输入 / 唤起命令...",

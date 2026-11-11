@@ -1,4 +1,16 @@
 {
+  "dots": {
+    "defaultConversation": "Dots 기본 대화",
+    "push": "Dots 푸시",
+    "progress": "Dots 진행 상황",
+    "cancelled": "Dot이 요청을 취소했습니다.",
+    "noSubscription": "Dot 구독이 비활성 상태입니다.",
+    "replyExpired": "Dot 응답 대기 시간이 초과되었습니다.",
+    "deliveryFailed": "Dots가 요청을 전달하지 못했습니다.",
+    "attachmentUnavailable": "첨부 파일을 사용할 수 없음",
+    "offline": "Dots Bridge에 연결할 수 없습니다.",
+    "disabled": "Dots가 비활성화되었습니다."
+  },
   "welcome": {
     "title": "안녕하세요, 오늘의 계획은 무엇인가요?",
     "placeholder": "메시지 전송, 파일 업로드, 폴더 열기, 예약 작업 만들기 또는 / 로 명령 호출...",

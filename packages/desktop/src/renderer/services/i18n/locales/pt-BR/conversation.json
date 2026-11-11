@@ -1,4 +1,16 @@
 {
+  "dots": {
+    "defaultConversation": "Conversa padrão do Dots",
+    "push": "Notificação do Dots",
+    "progress": "Progresso do Dots",
+    "cancelled": "O Dot cancelou a solicitação.",
+    "noSubscription": "A assinatura do Dot está inativa.",
+    "replyExpired": "O prazo de resposta do Dot expirou.",
+    "deliveryFailed": "O Dots não conseguiu entregar a solicitação.",
+    "attachmentUnavailable": "Anexo indisponível",
+    "offline": "Não foi possível conectar ao Dots Bridge.",
+    "disabled": "O Dots está desativado."
+  },
   "welcome": {
     "title": "Olá, qual é o seu plano para hoje?",
     "placeholder": "Envie uma mensagem, faça upload de arquivos, abra uma pasta, crie uma tarefa agendada ou digite / para comandos...",

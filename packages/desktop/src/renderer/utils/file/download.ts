@@ -7,7 +7,7 @@
 import { ipcBridge } from '@/common';
 import type { ChatFileRef, ToolImageRef } from '@/common/types/chatFile';
 import type { AsyncImageRef } from '@/common/types/platform/acpTypes';
-import { buildFileStreamUrl } from './fileUrls';
+import { buildFileStreamUrl, fetchDotsAttachment } from './fileUrls';
 import { base64ToBlob, BINARY_MIME_MAP } from './base64';
 
 function triggerBlobDownload(blob: Blob, file_name: string): void {
@@ -49,6 +49,15 @@ export async function downloadFileFromRef(file: ChatFileRef, file_name: string):
   const blob = await response.blob();
   if (blob.size === 0) throw new Error('File data is empty');
   triggerBlobDownload(blob, file_name);
+}
+
+/** Download a file received from Dots without exposing a storage URL. */
+export async function downloadDotsAttachment(
+  conversationId: string,
+  artifactId: string,
+  filename: string
+): Promise<void> {
+  triggerBlobDownload(await fetchDotsAttachment(conversationId, artifactId), filename);
 }
 
 export async function downloadAsyncImage(file: AsyncImageRef, fileName: string): Promise<void> {

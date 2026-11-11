@@ -1,4 +1,16 @@
 {
+  "dots": {
+    "defaultConversation": "Standardunterhaltung in Dots",
+    "push": "Dots-Benachrichtigung",
+    "progress": "Dots-Fortschritt",
+    "cancelled": "Dot hat die Anfrage abgebrochen.",
+    "noSubscription": "Das Dot-Abonnement ist inaktiv.",
+    "replyExpired": "Die Antwortfrist für Dot ist abgelaufen.",
+    "deliveryFailed": "Dots konnte die Anfrage nicht zustellen.",
+    "attachmentUnavailable": "Anhang nicht verfügbar",
+    "offline": "Dots Bridge war nicht erreichbar.",
+    "disabled": "Dots ist deaktiviert."
+  },
   "welcome": {
     "title": "Hallo, was hast du heute vor?",
     "placeholder": "Nachricht senden, Dateien hochladen, Ordner öffnen, eine geplante Aufgabe erstellen oder / für Befehle eingeben...",

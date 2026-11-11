@@ -399,6 +399,40 @@ describe('useAcpMessage', () => {
     );
   });
 
+  it.each([false, true])('renders a Dots push without changing turn state (running: %s)', async (active) => {
+    vi.mocked(getConversationOrNull).mockResolvedValue(null);
+    const { result } = renderHook(() => useAcpMessage('conv-1'));
+    await waitFor(() => expect(result.current.hasHydratedRunningState).toBe(true));
+    if (active) {
+      act(() => {
+        result.current.setAiProcessing(true);
+        responseStreamHandlerRef.current?.({
+          type: 'start',
+          conversation_id: 'conv-1',
+          msg_id: 'start',
+          data: {},
+        } as IResponseMessage);
+      });
+    }
+    act(() => {
+      responseStreamHandlerRef.current?.({
+        type: 'text',
+        conversation_id: 'conv-1',
+        msg_id: 'push',
+        data: { content: 'Scheduled update', dots_kind: 'push' },
+      } as IResponseMessage);
+    });
+
+    expect(addOrUpdateMessageMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        msg_id: 'push',
+        content: expect.objectContaining({ dotsKind: 'push' }),
+      })
+    );
+    expect(result.current.running).toBe(active);
+    expect(result.current.aiProcessing).toBe(active);
+  });
+
   it('renders an advisory tips notice without lighting the running timer', async () => {
     vi.mocked(getConversationOrNull).mockResolvedValue(null);
 

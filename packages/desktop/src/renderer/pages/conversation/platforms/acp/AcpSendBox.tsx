@@ -125,6 +125,7 @@ const AcpSendBox: React.FC<{
     context_limit,
   } = messageState;
   const { t } = useTranslation();
+  const isDots = backend === 'dots';
   const teamPermission = useTeamPermission();
   const isLeaderInTeam = teamPermission && conversation_id === teamPermission.leaderConversationId;
   const { checkAndUpdateTitle } = useAutoTitle();
@@ -146,6 +147,7 @@ const AcpSendBox: React.FC<{
   // sent natively (vision APIs reject it), so it always hints like a path.
   const mediaPathHintFor = useCallback(
     (path: string): string | undefined => {
+      if (isDots) return undefined;
       const ext = getFileExtension(path).toLowerCase();
       const isNativeImage = ext !== '.svg' && imageExts.includes(ext);
       const isNativeAudio = audioExts.includes(ext);
@@ -156,7 +158,7 @@ const AcpSendBox: React.FC<{
         defaultValue: 'This agent has no native support for this file type; it will be sent as a file path.',
       });
     },
-    [promptCapability, t]
+    [isDots, promptCapability, t]
   );
   const [isMobileSheetOpen, setIsMobileSheetOpen] = useState(false);
   const prepareRuntimeConfig = useCallback(async () => {
@@ -262,7 +264,7 @@ const AcpSendBox: React.FC<{
       // [[AION_FILES]] marker at the send edge (no front-end path/marker building).
       try {
         if (teamPermission) await teamPermission.warmupSession();
-        void checkAndUpdateTitle(conversation_id, input);
+        if (!isDots) void checkAndUpdateTitle(conversation_id, input);
         if (teamSendMessage) {
           await teamSendMessage({ input, files });
           emitter.emit('chat.history.refresh');
@@ -280,7 +282,7 @@ const AcpSendBox: React.FC<{
           files,
           // `@@` references. Dropping this here is a silent failure: the agent
           // simply never receives the session block.
-          sessions,
+          sessions: isDots ? undefined : sessions,
         });
         markSendAccepted(result.turn_id, result.runtime, result.msg_id);
         emitter.emit('chat.history.refresh');
@@ -366,6 +368,7 @@ Please check your local CLI tool authentication status`,
     },
     [
       backend,
+      isDots,
       checkAndUpdateTitle,
       conversation_id,
       markSendAccepted,
@@ -742,7 +745,7 @@ Please check your local CLI tool authentication status`,
         statusText={teamRuntime?.statusText}
         externalElapsedSource={Boolean(teamRuntime) || turnStartedAtMs != null}
         startedAtMs={teamRuntime ? (teamRuntime.startedAtMs ?? null) : turnStartedAtMs}
-        onStop={effectiveHandleStop}
+        onStop={isDots ? undefined : effectiveHandleStop}
         onRetryStart={teamRuntime?.onRetryStart ? () => void teamRuntime.onRetryStart?.() : undefined}
       />
       <CrossSessionDisabledBanner />
@@ -758,7 +761,7 @@ Please check your local CLI tool authentication status`,
         }}
         selectedSessions={selectedSessions}
         onSelectedSessionsChange={setSelectedSessions}
-        crossSessionEnabled={crossSessionEnabled}
+        crossSessionEnabled={!isDots && crossSessionEnabled}
         isTeamConversation={Boolean(teamRuntime)}
         loading={teamRuntime?.loading ?? isBusy}
         active={teamRuntime?.isActive}
@@ -777,12 +780,14 @@ Please check your local CLI tool authentication status`,
           backend: agent_name || backend,
           defaultValue: `Send message to {{backend}}...`,
         })}
-        onStop={effectiveHandleStop}
+        onStop={isDots ? undefined : effectiveHandleStop}
         className='z-10'
         onFilesAdded={handleFilesAdded}
         hasPendingAttachments={uploadFile.length > 0 || atPath.length > 0}
-        enableBtw={isSideQuestionSupported({ type: 'acp', backend })}
-        supportedExts={allSupportedExts}
+        enableBtw={!isDots && isSideQuestionSupported({ type: 'acp', backend })}
+        supportedExts={isDots ? [] : allSupportedExts}
+        allowAttachmentOnly={isDots}
+        hideStopAction={isDots}
         defaultMultiLine={!isMobile}
         lockMultiLine={!isMobile}
         tools={
@@ -793,22 +798,24 @@ Please check your local CLI tool authentication status`,
           />
         }
         rightTools={
-          <div className='flex items-center gap-8px min-w-0'>
-            <AgentModeSelector
-              backend={backend}
-              conversation_id={conversation_id}
-              compact
-              compactIconOnly={isMobile}
-              initialMode={session_mode}
-              compactLeadingIcon={<Shield theme='outline' size='14' fill={iconColors.secondary} />}
-              modeLabelFormatter={(mode) => t(`agentMode.${mode.value}`, { defaultValue: mode.label })}
-              compactLabelPrefix={t('agentMode.permission')}
-              onModeChanged={isLeaderInTeam ? teamPermission?.propagateMode : undefined}
-              beforeRuntimeSync={prepareRuntimeConfig}
-              beforeRuntimeSet={teamPermission?.warmupSession}
-              configOptionsPort={teamPermission?.configOptionsPort}
-            />
-          </div>
+          !isDots && (
+            <div className='flex items-center gap-8px min-w-0'>
+              <AgentModeSelector
+                backend={backend}
+                conversation_id={conversation_id}
+                compact
+                compactIconOnly={isMobile}
+                initialMode={session_mode}
+                compactLeadingIcon={<Shield theme='outline' size='14' fill={iconColors.secondary} />}
+                modeLabelFormatter={(mode) => t(`agentMode.${mode.value}`, { defaultValue: mode.label })}
+                compactLabelPrefix={t('agentMode.permission')}
+                onModeChanged={isLeaderInTeam ? teamPermission?.propagateMode : undefined}
+                beforeRuntimeSync={prepareRuntimeConfig}
+                beforeRuntimeSet={teamPermission?.warmupSession}
+                configOptionsPort={teamPermission?.configOptionsPort}
+              />
+            </div>
+          )
         }
         prefix={
           <>

@@ -1,4 +1,16 @@
 {
+  "dots": {
+    "defaultConversation": "گفت‌وگوی پیش‌فرض Dots",
+    "push": "اعلان Dots",
+    "progress": "پیشرفت Dots",
+    "cancelled": "Dot درخواست را لغو کرد.",
+    "noSubscription": "اشتراک Dot غیرفعال است.",
+    "replyExpired": "مهلت پاسخ Dot تمام شد.",
+    "deliveryFailed": "Dots نتوانست درخواست را تحویل دهد.",
+    "attachmentUnavailable": "پیوست در دسترس نیست",
+    "offline": "اتصال به Dots Bridge برقرار نشد.",
+    "disabled": "Dots غیرفعال است."
+  },
   "welcome": {
     "title": "سلام، برنامه‌تان برای امروز چیست؟",
     "placeholder": "پیام بفرستید، فایل آپلود کنید، پوشه باز کنید، کار زمان‌بندی‌شده ایجاد کنید یا برای دستورات / را تایپ کنید...",

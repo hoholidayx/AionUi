@@ -4,6 +4,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { ipcBridge } from '@/common';
+import { Alert } from '@arco-design/web-react';
+import { useTranslation } from 'react-i18next';
+import useSWR from 'swr';
 import type { IConversationMcpStatus } from '@/common/config/storage';
 import type { ChatFileRef } from '@/common/types/chatFile';
 import { ConversationProvider } from '@/renderer/hooks/context/ConversationContext';
@@ -63,6 +67,21 @@ const AcpChat: React.FC<{
   forkCapability,
   promptCapability,
 }) => {
+  const { t } = useTranslation();
+  const { data: dotsConversation } = useSWR(
+    backend === 'dots' ? ['dots.connection', conversation_id] : null,
+    () => ipcBridge.conversation.get.invoke({ id: conversation_id }),
+    { refreshInterval: 10_000 }
+  );
+  const dotsConnection = (dotsConversation?.extra as { dots_connection?: string } | undefined)?.dots_connection;
+  const dotsStatus =
+    dotsConnection === 'offline'
+      ? t('conversation.dots.offline')
+      : dotsConnection === 'no_subscription'
+        ? t('conversation.dots.noSubscription')
+        : dotsConnection === 'disabled'
+          ? t('conversation.dots.disabled')
+          : undefined;
   useMessageLstCache(conversation_id, { recoverImageCards: backend === 'codex' ? 'codex' : undefined });
   usePendingConfirmationsRecovery(conversation_id);
   usePlanRecovery(conversation_id);
@@ -95,7 +114,8 @@ const AcpChat: React.FC<{
           </FlexFullContainer>
           <AcpE2EStreamInjector conversationId={conversation_id} />
           <ConversationPlanBar conversation_id={conversation_id} />
-          {!hideSendBox && (
+          {dotsStatus && <Alert type='warning' content={dotsStatus} />}
+          {!hideSendBox && dotsConnection !== 'disabled' && (
             <AcpSendBox
               conversation_id={conversation_id}
               backend={backend}

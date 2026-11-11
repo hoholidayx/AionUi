@@ -1,4 +1,16 @@
 {
+  "dots": {
+    "defaultConversation": "Varsayılan Dots sohbeti",
+    "push": "Dots bildirimi",
+    "progress": "Dots ilerlemesi",
+    "cancelled": "Dot isteği iptal etti.",
+    "noSubscription": "Dot aboneliği etkin değil.",
+    "replyExpired": "Dot yanıtı zaman aşımına uğradı.",
+    "deliveryFailed": "Dots isteği iletemedi.",
+    "attachmentUnavailable": "Ek kullanılamıyor",
+    "offline": "Dots Bridge bağlantısı kurulamadı.",
+    "disabled": "Dots devre dışı."
+  },
   "welcome": {
     "title": "Merhaba, bugünkü planın nedir?",
     "placeholder": "Mesaj gönder, dosya yükle, klasör aç veya komutlar için / yaz...",

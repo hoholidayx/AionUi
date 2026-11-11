@@ -1,4 +1,16 @@
 {
+  "dots": {
+    "defaultConversation": "Dots の既定の会話",
+    "push": "Dots のプッシュ通知",
+    "progress": "Dots の進捗",
+    "cancelled": "Dot がリクエストをキャンセルしました。",
+    "noSubscription": "Dot のサブスクリプションは無効です。",
+    "replyExpired": "Dot からの応答がタイムアウトしました。",
+    "deliveryFailed": "Dots はリクエストを配信できませんでした。",
+    "attachmentUnavailable": "添付ファイルを利用できません",
+    "offline": "Dots Bridge に接続できませんでした。",
+    "disabled": "Dots は無効です。"
+  },
   "welcome": {
     "title": "Hi、今日の予定は何ですか？",
     "placeholder": "メッセージの送信、ファイルの追加、フォルダーの追加、スケジュールタスクの作成、または / でコマンド呼び出し...",

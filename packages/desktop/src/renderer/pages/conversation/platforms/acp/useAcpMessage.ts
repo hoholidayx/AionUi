@@ -280,6 +280,14 @@ export const useAcpMessage = (
         return;
       }
 
+      const transformedMessage = transformMessage(message);
+      // Dots receipts are persisted independently of the live turn. A push
+      // can arrive while idle or in the middle of an unrelated request.
+      if (transformedMessage?.type === 'text' && transformedMessage.content.dotsKind) {
+        mergeLiveMessage(transformedMessage);
+        return;
+      }
+
       const shouldCompleteThinking =
         activeThinkingRef.current &&
         ![
@@ -302,7 +310,6 @@ export const useAcpMessage = (
         completeActiveThinking(message);
       }
 
-      const transformedMessage = transformMessage(message);
       switch (message.type) {
         case 'thought':
           // Thought events are now handled by AcpAgentManager (converted to thinking messages)

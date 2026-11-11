@@ -1,4 +1,16 @@
 {
+  "dots": {
+    "defaultConversation": "Dots default conversation",
+    "push": "Dots push",
+    "progress": "Dots progress",
+    "cancelled": "Dot cancelled the request.",
+    "noSubscription": "The Dot subscription is inactive.",
+    "replyExpired": "The Dot reply deadline expired.",
+    "deliveryFailed": "Dots could not deliver this request.",
+    "attachmentUnavailable": "Attachment unavailable",
+    "offline": "Could not reach Dots Bridge.",
+    "disabled": "Dots is disabled."
+  },
   "welcome": {
     "title": "Hi, what's your plan for today?",
     "placeholder": "Send a message, upload files, open a folder, create a scheduled task, or type / for commands...",

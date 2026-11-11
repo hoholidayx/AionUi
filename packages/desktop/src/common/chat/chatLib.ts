@@ -128,6 +128,12 @@ export type CronMessageMeta = {
   triggered_at: number;
 };
 
+export type DotsMessageAttachment = {
+  artifact_id: string;
+  filename: string;
+  preview: boolean;
+};
+
 export type IMessageText = IMessage<
   'text',
   {
@@ -135,6 +141,8 @@ export type IMessageText = IMessage<
     /** Backend explicitly replaced the accumulated text for this msg_id. */
     replace?: boolean;
     cronMeta?: CronMessageMeta;
+    dotsKind?: string;
+    dotsAttachments?: DotsMessageAttachment[];
     teammateMessage?: boolean;
     senderName?: string;
     senderAgentType?: string;
@@ -481,6 +489,10 @@ type RawTextMessageContent = {
   content?: unknown;
   replace?: unknown;
   cronMeta?: unknown;
+  dots_kind?: unknown;
+  dots_attachments?: unknown;
+  dotsKind?: unknown;
+  dotsAttachments?: unknown;
   teammateMessage?: unknown;
   teammate_message?: unknown;
   senderName?: unknown;
@@ -530,6 +542,17 @@ const normalizeTextMessageContentObject = (
     'sender_conversation_id',
     'senderConversationID',
   ]);
+  const dotsKind = firstStringField(data, ['dots_kind', 'dotsKind']);
+  const rawAttachments = data.dots_attachments ?? data.dotsAttachments;
+  const dotsAttachments: DotsMessageAttachment[] = Array.isArray(rawAttachments)
+    ? rawAttachments.filter(
+        (file: unknown): file is DotsMessageAttachment =>
+          isObject(file) &&
+          typeof file.artifact_id === 'string' &&
+          typeof file.filename === 'string' &&
+          typeof file.preview === 'boolean'
+      )
+    : [];
   const cronMeta = isCronMessageMeta(data.cronMeta) ? data.cronMeta : undefined;
   const replace = options?.replace === true || data.replace === true;
   const teammateMessage = Boolean(data.teammateMessage) || Boolean(data.teammate_message);
@@ -538,6 +561,8 @@ const normalizeTextMessageContentObject = (
     content,
     ...(replace ? { replace: true } : {}),
     ...(cronMeta ? { cronMeta } : {}),
+    ...(dotsKind ? { dotsKind } : {}),
+    ...(dotsAttachments.length ? { dotsAttachments } : {}),
     ...(teammateMessage ? { teammateMessage: true } : {}),
     ...(senderName ? { senderName } : {}),
     ...(senderAgentType ? { senderAgentType } : {}),

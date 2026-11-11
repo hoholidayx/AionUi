@@ -69,6 +69,8 @@ const ConversationRow: React.FC<ConversationRowProps> = (props) => {
   } = props;
   const { t } = useTranslation();
   const { info: assistantInfo } = usePresetAssistantInfo(conversation);
+  const isDotsDefault = (conversation.extra as { dots_default?: boolean })?.dots_default === true;
+  const name = isDotsDefault ? t('conversation.dots.defaultConversation') : conversation.name;
   const isPinned = isConversationPinned(conversation);
   // Fork-lineage badge: present only on forked conversations (extra.fork is
   // server-minted by the fork API). Parent name resolves from the loaded
@@ -129,7 +131,7 @@ const ConversationRow: React.FC<ConversationRowProps> = (props) => {
   const handleRowClick = () => {
     cleanupSiderTooltips();
     if (batchMode) {
-      onToggleChecked(conversation);
+      if (!isDotsDefault) onToggleChecked(conversation);
       return;
     }
     onConversationClick(conversation);
@@ -139,7 +141,7 @@ const ConversationRow: React.FC<ConversationRowProps> = (props) => {
     event.preventDefault();
     event.stopPropagation();
     cleanupSiderTooltips();
-    if (batchMode) {
+    if (batchMode || isDotsDefault) {
       return;
     }
     onOpenMenu(conversation);
@@ -166,7 +168,7 @@ const ConversationRow: React.FC<ConversationRowProps> = (props) => {
     <Tooltip
       key={conversation.id}
       {...siderTooltipProps}
-      content={conversation.name || t('conversation.welcome.newConversation')}
+      content={name || t('conversation.welcome.newConversation')}
       position='right'
     >
       <div
@@ -185,7 +187,7 @@ const ConversationRow: React.FC<ConversationRowProps> = (props) => {
         onClick={handleRowClick}
         onContextMenu={handleRowContextMenu}
       >
-        {batchMode && (
+        {batchMode && !isDotsDefault && (
           <span
             className='me-8px flex-center'
             onClick={(event) => {
@@ -226,7 +228,7 @@ const ConversationRow: React.FC<ConversationRowProps> = (props) => {
         </span>
         <FlexFullContainer className='h-24px min-w-0 flex-1 collapsed-hidden'>
           <Tooltip
-            content={conversation.name}
+            content={name}
             disabled={!inlineNameTooltipEnabled}
             trigger='hover'
             popupVisible={inlineNameTooltipEnabled ? undefined : false}
@@ -235,7 +237,7 @@ const ConversationRow: React.FC<ConversationRowProps> = (props) => {
             position='top'
           >
             <div className='chat-history__item-name overflow-hidden text-ellipsis flex items-center gap-4px w-full text-14px font-[500] lh-24px whitespace-nowrap min-w-0 text-t-primary'>
-              <span className='block overflow-hidden text-ellipsis whitespace-nowrap min-w-0'>{conversation.name}</span>
+              <span className='block overflow-hidden text-ellipsis whitespace-nowrap min-w-0'>{name}</span>
               {forkLineage && (
                 <Tooltip
                   content={
@@ -255,7 +257,7 @@ const ConversationRow: React.FC<ConversationRowProps> = (props) => {
         </FlexFullContainer>
 
         {renderCompletionUnreadDot()}
-        {!batchMode && (
+        {!batchMode && !isDotsDefault && (
           <div
             className={classNames(
               'absolute end-8px top-1/2 -translate-y-1/2 items-center justify-end !collapsed-hidden',

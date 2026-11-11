@@ -289,7 +289,7 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
       // Empty input = "start chat": create the conversation but do not stash an
       // initial message, so the window opens idle on the empty state instead of
       // auto-sending a blank first turn.
-      if (input.trim()) {
+      if (input.trim() || (selectedAssistantBackend === 'dots' && files.length > 0)) {
         const initialMessage = {
           input,
           files: files.length > 0 ? files : undefined,
